@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyAction, tick } from "./sim";
+import { applyAction, tick, FOCUS_COOLDOWN_MS, FOCUS_GAIN } from "./sim";
 import { computeOfflineProgress } from "./offline";
 import { createInitialState } from "./save";
 
@@ -30,6 +30,19 @@ describe("upgrades", () => {
 
     expect(updated.essence).toBeCloseTo(90);
     expect(updated.production.perSecond).toBeGreaterThan(starting.production.perSecond);
+  });
+});
+
+describe("focus action", () => {
+  it("respects cooldown before granting essence again", () => {
+    const initial = createInitialState(0);
+    const first = applyAction(initial, { type: "focus", performedAtMs: 0 });
+    const second = applyAction(first, { type: "focus", performedAtMs: FOCUS_COOLDOWN_MS / 2 });
+    const third = applyAction(second, { type: "focus", performedAtMs: FOCUS_COOLDOWN_MS + 10 });
+
+    expect(first.essence).toBeGreaterThan(initial.essence);
+    expect(second.essence).toBe(first.essence);
+    expect(third.essence).toBeCloseTo(first.essence + FOCUS_GAIN);
   });
 });
 

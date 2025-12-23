@@ -1,9 +1,10 @@
-import { findUpgrade } from "./data/upgrades";
 import { ascend } from "./progression";
 import { calculateProduction } from "./state";
 import type { Action, GameState } from "./types";
+import { findUpgrade } from "./data/upgrades";
 
-const FOCUS_GAIN = 5;
+export const FOCUS_GAIN = 5;
+export const FOCUS_COOLDOWN_MS = 3000;
 
 export function tick(state: GameState, dtMs: number): GameState {
   if (dtMs <= 0) {
@@ -23,9 +24,14 @@ export function tick(state: GameState, dtMs: number): GameState {
 export function applyAction(state: GameState, action: Action): GameState {
   switch (action.type) {
     case "focus": {
+      if (!canFocus(state, action.performedAtMs)) {
+        return state;
+      }
+
       return {
         ...state,
-        essence: state.essence + FOCUS_GAIN
+        essence: state.essence + FOCUS_GAIN,
+        lastFocusAtMs: action.performedAtMs
       };
     }
     case "buyUpgrade": {
@@ -55,4 +61,11 @@ export function applyAction(state: GameState, action: Action): GameState {
       return state;
     }
   }
+}
+
+function canFocus(state: GameState, performedAtMs: number): boolean {
+  if (state.lastFocusAtMs === null) {
+    return true;
+  }
+  return performedAtMs - state.lastFocusAtMs >= FOCUS_COOLDOWN_MS;
 }

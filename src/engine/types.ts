@@ -13,9 +13,10 @@ export interface GameState {
   insight: number;
   production: ProductionState;
   upgrades: Record<UpgradeId, number>;
+  lastFocusAtMs: number | null;
 }
 
 export type Action =
-  | { type: "focus" }
+  | { type: "focus"; performedAtMs: number }
   | { type: "buyUpgrade"; upgradeId: UpgradeId }
   | { type: "ascend" };

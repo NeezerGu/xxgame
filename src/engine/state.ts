@@ -39,7 +39,8 @@ export function resetState(state: GameState): GameState {
   const reset: GameState = {
     ...state,
     essence: 0,
-    upgrades: initializeUpgradesRecord()
+    upgrades: initializeUpgradesRecord(),
+    lastFocusAtMs: null
   };
   return calculateProduction(reset);
 }

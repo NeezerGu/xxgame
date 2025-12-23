@@ -1,7 +1,7 @@
 import { resetState } from "./state";
 import type { GameState } from "./types";
 
-const ASCEND_THRESHOLD = 1000;
+export const ASCEND_THRESHOLD = 1000;
 
 export function canAscend(state: GameState, threshold: number = ASCEND_THRESHOLD): boolean {
   return state.essence >= threshold;

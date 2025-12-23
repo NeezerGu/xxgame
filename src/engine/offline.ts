@@ -1,4 +1,5 @@
 import { tick } from "./sim";
+import { calculateProduction } from "./state";
 import type { GameState } from "./types";
 
 const DEFAULT_OFFLINE_CAP_MS = 8 * 60 * 60 * 1000;
@@ -22,6 +23,6 @@ export function computeOfflineProgress(
     return { state, elapsedMs, appliedMs };
   }
 
-  const updatedState = tick(state, appliedMs);
+  const updatedState = tick(calculateProduction(state), appliedMs);
   return { state: updatedState, elapsedMs, appliedMs };
 }
