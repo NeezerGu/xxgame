@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { computeOfflineProgress } from "@engine/offline";
 import { ASCEND_THRESHOLD } from "@engine/progression";
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import type { GameState } from "@engine/types";
 import { UPGRADE_DEFINITIONS } from "@engine/data/upgrades";
+import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 
 const SAVE_KEY = "idle-proto-save";
 const AUTO_SAVE_INTERVAL_MS = 5000;
@@ -51,6 +52,7 @@ function App() {
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [locale, setLocale] = useState<Locale>(() => getDefaultLocale());
 
   const gameStateRef = useRef(gameState);
   const lastTickRef = useRef(performance.now());
@@ -59,6 +61,11 @@ function App() {
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = t("app.title", undefined, locale);
+  }, [locale]);
 
   useEffect(() => {
     const tickInterval = setInterval(() => {
@@ -152,41 +159,74 @@ function App() {
       setLastSavedAtMs(parsed.savedAtMs);
       setImportError(null);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Invalid save data");
+      console.warn("Failed to import save", error);
+      const message =
+        error instanceof Error && error.message === "Save schemaVersion mismatch."
+          ? t("dev.importErrorSchemaMismatch", undefined, locale)
+          : t("dev.importErrorInvalid", undefined, locale);
+      setImportError(message);
     }
+  };
+
+  const handleLocaleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextLocale = event.target.value as Locale;
+    setLocale(nextLocale);
+    persistLocale(nextLocale);
   };
 
   const ascendProgress = Math.min(1, gameState.essence / ASCEND_THRESHOLD);
   const focusLabel =
     focusCooldownRemaining > 0
-      ? `Focus (cooldown ${(focusCooldownRemaining / 1000).toFixed(1)}s)`
-      : "Focus";
+      ? t("actions.focusWithCooldown", { seconds: (focusCooldownRemaining / 1000).toFixed(1) }, locale)
+      : t("actions.focus", undefined, locale);
+  const ascendDescription = t(
+    "ascension.description",
+    {
+      threshold: ASCEND_THRESHOLD.toLocaleString(locale),
+      progress: (ascendProgress * 100).toFixed(1)
+    },
+    locale
+  );
+  const autosaveLabel = lastSavedAtMs
+    ? t("dev.autosaveWithLast", { time: new Date(lastSavedAtMs).toLocaleTimeString(locale) }, locale)
+    : t("dev.autosave", undefined, locale);
 
   return (
     <main className="page">
       <header className="header">
-        <div>
-          <h1>Arcane Workshop Prototype</h1>
-          <p>Deterministic idle prototype scaffold.</p>
+        <div className="header-top">
+          <div>
+            <h1>{t("app.title", undefined, locale)}</h1>
+            <p>{t("app.subtitle", undefined, locale)}</p>
+          </div>
+          <div className="language-switch">
+            <label className="muted small">
+              {t("app.localeSwitch", undefined, locale)}
+              <select value={locale} onChange={handleLocaleChange}>
+                <option value="zh-CN">{t("locale.zh-CN", undefined, locale)}</option>
+                <option value="en-US">{t("locale.en-US", undefined, locale)}</option>
+              </select>
+            </label>
+          </div>
         </div>
         <div className="stats-grid">
-          <Stat label="Essence" value={gameState.essence} />
-          <Stat label="Insight" value={gameState.insight} />
-          <Stat label="Essence/sec" value={gameState.production.perSecond} />
+          <Stat label={t("stats.essence", undefined, locale)} value={gameState.essence} />
+          <Stat label={t("stats.insight", undefined, locale)} value={gameState.insight} />
+          <Stat
+            label={t("stats.essencePerSecond", undefined, locale)}
+            value={gameState.production.perSecond}
+          />
         </div>
       </header>
 
       <section className="card">
         <div className="card-header">
           <div>
-            <h2>Ascension Progress</h2>
-            <p>
-              Reach {ASCEND_THRESHOLD.toLocaleString()} Essence to ascend. Progress:{" "}
-              {(ascendProgress * 100).toFixed(1)}%
-            </p>
+            <h2>{t("ascension.title", undefined, locale)}</h2>
+            <p>{ascendDescription}</p>
           </div>
           <button className="action-button" onClick={handleAscend} disabled={ascendProgress < 1}>
-            Ascend
+            {t("ascension.button", undefined, locale)}
           </button>
         </div>
         <div className="progress-bar">
@@ -196,21 +236,21 @@ function App() {
 
       <section className="card">
         <div className="card-header">
-          <h2>Actions</h2>
+          <h2>{t("actions.title", undefined, locale)}</h2>
           <div className="actions-row">
             <button
               className="action-button"
               onClick={handleFocus}
               disabled={focusCooldownRemaining > 0}
-              title="Gain a burst of Essence"
+              title={t("actions.focusTooltip", undefined, locale)}
             >
               {focusLabel}
             </button>
             <button className="action-button secondary" onClick={() => handleFastForward(10_000)}>
-              Fast-forward 10s
+              {t("actions.fastForward10", undefined, locale)}
             </button>
             <button className="action-button secondary" onClick={() => handleFastForward(60_000)}>
-              Fast-forward 60s
+              {t("actions.fastForward60", undefined, locale)}
             </button>
           </div>
         </div>
@@ -218,7 +258,7 @@ function App() {
 
       <section className="card">
         <div className="card-header">
-          <h2>Upgrades</h2>
+          <h2>{t("upgrades.title", undefined, locale)}</h2>
         </div>
         <div className="upgrade-list">
           {UPGRADE_DEFINITIONS.map((upgrade) => {
@@ -227,19 +267,20 @@ function App() {
             return (
               <div className="upgrade-row" key={upgrade.id}>
                 <div>
-                  <strong>{upgrade.name}</strong>
+                  <strong>{t(upgrade.nameKey as MessageKey, undefined, locale)}</strong>
                   <p className="muted">
-                    {upgrade.description} • Owned: {owned}
+                    {t(upgrade.descriptionKey as MessageKey, undefined, locale)} •{" "}
+                    {t("upgrades.owned", { count: owned }, locale)}
                   </p>
                 </div>
                 <div className="upgrade-actions">
-                  <span className="cost">Cost: {upgrade.cost}</span>
+                  <span className="cost">{t("upgrades.cost", { cost: upgrade.cost }, locale)}</span>
                   <button
                     className="action-button"
                     onClick={() => handleBuyUpgrade(upgrade.id)}
                     disabled={!affordable}
                   >
-                    Buy
+                    {t("upgrades.buy", undefined, locale)}
                   </button>
                 </div>
               </div>
@@ -250,15 +291,13 @@ function App() {
 
       <section className="card">
         <div className="card-header">
-          <h2>Dev Panel</h2>
-          <div className="muted small">
-            Autosaves every 5s{lastSavedAtMs ? ` • Last saved ${new Date(lastSavedAtMs).toLocaleTimeString()}` : ""}.
-          </div>
+          <h2>{t("dev.title", undefined, locale)}</h2>
+          <div className="muted small">{autosaveLabel}</div>
         </div>
         <div className="dev-panel">
           <div className="dev-controls">
             <button className="action-button secondary" onClick={saveGame}>
-              Save Now
+              {t("dev.saveNow", undefined, locale)}
             </button>
             <button
               className="action-button secondary"
@@ -267,25 +306,27 @@ function App() {
                 setImportError(null);
               }}
             >
-              Load Export
+              {t("dev.loadExport", undefined, locale)}
             </button>
           </div>
-          <label className="muted">Export / Import Save JSON</label>
+          <label className="muted">{t("dev.exportImportLabel", undefined, locale)}</label>
           <textarea
             value={importText}
             onChange={(event) => setImportText(event.target.value)}
             rows={4}
-            placeholder="Paste save JSON here"
+            placeholder={t("dev.textareaPlaceholder", undefined, locale)}
           />
           <div className="dev-controls">
             <button className="action-button secondary" onClick={saveGame}>
-              Export to textarea
+              {t("dev.exportToTextarea", undefined, locale)}
             </button>
             <button className="action-button" onClick={handleImport}>
-              Import
+              {t("dev.import", undefined, locale)}
             </button>
           </div>
-          {importError ? <div className="error">Import error: {importError}</div> : null}
+          {importError ? (
+            <div className="error">{t("dev.importError", { message: importError }, locale)}</div>
+          ) : null}
         </div>
       </section>
     </main>
