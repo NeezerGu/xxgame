@@ -4,9 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.js",
-    "test": "NODE_OPTIONS=--experimental-specifier-resolution=node node scripts/run-tests.js"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings=0",
+    "format": "prettier --check .",
+    "build:engine": "node scripts/build.js",
+    "test:engine": "node --experimental-specifier-resolution=node scripts/run-tests.js"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.9",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^1.6.0"
+  }
 }
