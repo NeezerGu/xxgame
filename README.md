@@ -21,3 +21,11 @@ npm run dev
 ## Engine rules
 
 Game logic lives in `src/engine` as pure TypeScript modules with deterministic simulation. UI modules under `src/ui` consume and display engine state.
+
+## Docs
+
+- `docs/GAME_PLAN.md` — 玩法规划与里程碑
+- `docs/SYSTEMS.md` — 状态结构与动作规则
+- `docs/ECONOMY.md` — 公式与调参框架
+- `docs/ROADMAP.md` — 里程碑验收
+- `docs/DECISIONS.md` — 关键设计决策

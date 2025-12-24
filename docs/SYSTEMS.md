@@ -1,0 +1,78 @@
+# SYSTEMS — 状态与动作
+
+## GameState 结构（草案）
+- `schemaVersion`: number — 存档版本，用于迁移。
+- `seed`: number — 随机种子，所有 RNG 基于此并存档。
+- `timestamp`: number — 上次保存/模拟的毫秒时间戳。
+- `elapsedOffline`: number — 累计离线毫秒，用于上限控制。
+- `resources`: { `essence`: number, `insight`: number, `research`: number }。
+- `rates`: { `essencePerSecond`: number } — 可由派生计算得到，存放缓存/上次计算值。
+- `upgrades`: record<string, { level: number, unlocked: boolean }>。
+- `contracts`: {
+  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed' | 'failed', `requirements`: {...}, `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number }, `constraints`: {...} }>;
+  - `maxSlots`: number;
+  - `reputation`: number;
+}。
+- `research`: { nodes: record<string, { purchased: boolean, unlocked: boolean }> }。
+- `ascend`: { `runs`: number, `insightSpent`: number, `modifiers`: record<string, number> }。
+- `options`: { `devMode`: boolean } — 调试开关。
+
+## Actions（名称占位，可调整）
+- `INIT_STATE` — 初始化。
+- `TICK(dtMs)` — 按 dt 结算被动产出、契约进度、检查完成/失败。
+- `FOCUS` — 主动获得少量 Essence，应用冷却逻辑。
+- `BUY_UPGRADE(id)` — 购买升级。
+- `ACCEPT_CONTRACT(id)` — 将待选契约放入空槽位并开始计时。
+- `COMPLETE_CONTRACT(slotId)` — 结算完成的契约并发放奖励。
+- `BUY_RESEARCH(id)` — 购买研究节点。
+- `ASCEND` — 触发软重置并计算 Insight。
+- `IMPORT_SAVE(payload)` / `EXPORT_SAVE()` — 读写存档字符串。
+- `FAST_FORWARD(ms)` — 开发工具，用于模拟时间。
+
+## 动作规则（前置、变更、派生）
+- `INIT_STATE`
+  - 前置：无。
+  - 变更：创建默认 GameState，初始化资源/升级/研究/契约槽位、seed 与 schemaVersion。
+  - 派生：计算初始 rates。
+- `TICK(dtMs)`
+  - 前置：dtMs >= 0；使用确定性 tick（例如固定 50ms 步长切片）。
+  - 变更：增加 Essence（考虑升级/研究/Insight 乘区）；推进 active 契约 `elapsedMs`，若达到 duration 切换为 completed 或 failed；更新 `elapsedOffline`（离线模拟时）。
+  - 派生：重新计算 `rates`、Ascend 进度、可用契约池。
+- `FOCUS`
+  - 前置：冷却结束；玩家非自动化状态。
+  - 变更：即时增加 Essence，重置冷却计时。
+  - 派生：若有“连击/效率”类研究，可更新短期系数。
+- `BUY_UPGRADE(id)`
+  - 前置：升级已解锁，资源足够。
+  - 变更：扣除 Essence（或指定成本），升级等级 +1，可能提升容量/速率/契约速度。
+  - 派生：刷新 `rates`、相关阈值；可能解锁新的契约类型或研究节点。
+- `ACCEPT_CONTRACT(id)`
+  - 前置：存在空闲槽，满足解锁条件（Reputation/研究/Ascend 等），并已支付接单成本（如有）。
+  - 变更：将契约实例化为 active，设置 `elapsedMs = 0`；可能占用资源/库存。
+  - 派生：记录到契约列表，更新 UI 状态与计时器。
+- `COMPLETE_CONTRACT(slotId)`
+  - 前置：该槽位 status 为 completed；如需资源交付，检查库存满足。
+  - 变更：发放奖励（E/R/I/Reputation），释放槽位为 idle；记录统计（用于 Ascend 或解锁条件）。
+  - 派生：可能刷新契约池、触发研究解锁、更新 Ascend 进度。
+- `BUY_RESEARCH(id)`
+  - 前置：节点已解锁、未购买，资源（R 或 I）足够，前置研究满足。
+  - 变更：扣除成本，标记 purchased；可能修改乘区、开启新槽位或自动化规则。
+  - 派生：更新可用动作列表、rates、契约生成参数。
+- `ASCEND`
+  - 前置：满足 Ascend 阈值（如累计 Essence 或契约评分）；不在离线结算中触发。
+  - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级，保留研究解锁（依设计），runs +1。
+  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates。
+- `IMPORT_SAVE(payload)` / `EXPORT_SAVE()`
+  - 前置：payload 需通过 schemaVersion 校验和签名/校验（若有）。
+  - 变更：导入时替换 GameState 并运行迁移；导出时序列化当前 GameState。
+  - 派生：导入后立即计算离线补偿（基于 timestamp）。
+- `FAST_FORWARD(ms)`
+  - 前置：仅在开发/调试模式。
+  - 变更：调用 TICK 批量推进时间。
+  - 派生：用于测试离线与契约逻辑，不影响正式玩法。
+
+## 派生值计算
+- 产率（rates）：基于基础产出 × 升级乘区 × 研究乘区 × Insight 乘区；可缓存但需在相关动作后刷新。
+- 契约完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。
+- Ascend 预览：基于当前/累计指标计算，下行取整以防止浮点误差。
+- 离线模拟：`effectiveOffline = min(now - timestamp, offlineCapMs)`；按固定 tick 迭代调用 TICK，避免一次性大步长偏差。

@@ -1,29 +1,47 @@
-# Prototype Spec (Idle / Incremental)
+# Prototype Spec — M1 可玩切片对齐版
 
-## High-level concept (original)
-Theme: "Arcane Workshop" (placeholder). Player grows a small workshop into a self-sustaining arcane industry.
-No story for now. Focus on numbers + progression.
+> 本文件仅覆盖 ROADMAP M1 所需内容，并与 GAME_PLAN/SYSTEMS 保持一致；过期内容已移除。
 
-## Core loop (MVP)
-- Resource: Essence (E)
-- Passive production: +E per second
-- Actions:
-  - "Focus" button: gives a small instant E (cooldown-based)
-  - Upgrades: increase E/sec or multiply gains
-- Milestone:
-  - "Ascend" (soft reset) once Essence reaches a threshold; grants permanent “Insight” points to boost future runs.
+## 范围与目标（M1）
+- 资源：Essence (E)、Insight (I)、Research 点 (R)。
+- 核心操作：被动产出 E；Focus 主动获取 E；购买升级；接收/完成订单/契约；购买基础研究；触发 Ascend。
+- 系统基线：确定性 tick、离线结算（有上限）、存档含 schemaVersion/seed/migration。
+- UI 最小集：资源栏、订单/契约、升级、研究（最小）、Ascend、开发/调试面板。
 
-## Requirements (MVP)
-- Deterministic simulation tick (e.g., 20 ticks/sec internal, UI can display per second)
-- Offline progress: on load, simulate elapsed time with caps (e.g., max 8h)
-- Save/load with schemaVersion and migrations
-- Minimal UI:
-  - Resource display (Essence, Insight)
-  - Current E/sec
-  - Progress bar to next milestone
-  - Upgrade list (buy button, cost, effect)
-  - Dev panel: fast-forward 10s/60s, export/import save JSON
+## 核心循环（在线）
+1) 被动产出：E 按固定 tick 生成，受升级/研究/Insight 乘区影响。  
+2) 主动操作：Focus 获得小额 E（有冷却）；接受契约并等待或提交资源完成。  
+3) 成长：升级提升产出/速度/容量；基础研究解锁额外契约槽或效率。  
+4) 进阶：完成契约获取 E/R/声望并解锁更高阶契约；Ascend 在达到阈值后重置并获得 I。  
 
-## Non-goals (for MVP)
-- No combat, no maps, no complex crafting chains
-- No external services, no analytics
+## 核心循环（离线）
+- 存档 timestamp 记录最后结算时间；加载时按确定性逻辑补算 `min(离线时长, 上限)`。  
+- 离线期间仅结算被动产出、契约计时与可自动完成的步骤；Focus/手动提交不自动触发。  
+
+## 系统拆解（按 M1 必须项）
+- **资源与乘区**：E 为主货币；I 由 Ascend 产生并提供永久乘区；R 由契约/研究获取并用于解锁研究。  
+- **Focus**：主动增益 E，受冷却；可受少量升级/研究影响冷却或收益。  
+- **升级**：数据驱动成本/效果，提升 E 产出、契约速度或容量。  
+- **订单/契约**：有限槽位；包含时长、要求、奖励、可选约束；完成后发放 E/R/声望，失败不致命。  
+- **研究（最小）**: 基础节点解锁额外契约槽、速度或被动乘区；树状结构有前置。  
+- **Ascend**：基于累计 E 或契约评分触发；重置 E/契约/部分升级，授予 I 并保留研究解锁（按设计）。  
+- **离线与上限**：离线时长上限（如 8h）；以固定 tick 逐步结算，防止大步长误差。  
+- **存档/迁移**：GameState 含 schemaVersion、seed、timestamp、elapsedOffline、resources、upgrades、contracts、research、ascend；导入时跑迁移再结算离线。  
+
+## UI 信息架构（M1 最小）
+- 顶部：E/I/R、E/sec、契约槽状态、Ascend 进度。  
+- Tab：订单（接单/完成、进度条）、升级（成本/效果/按钮）、研究（基础节点）、Ascend（收益预览/确认）、开发/调试（快进 10s/60s、导出/导入存档 JSON、重置）。  
+- 提示：契约到期/完成、离线上限告警。  
+
+## 确定性与数据规则
+- Tick 长度固定（示例 50ms），所有 RNG 基于存档 seed；相同输入必得相同输出。  
+- 数值与模板数据放在 `src/engine/data/*.ts`，引擎保持纯函数。  
+
+## 非目标 / 延后到 M2+
+- 复杂研究分支、多层资源链、主题化文案/美术、社交/网络功能等。  
+
+## ROADMAP M1 覆盖项
+- 在线循环可跑（E 产出、升级、契约接受/完成、基础研究）。  
+- 离线结算与存档/加载（含 schemaVersion/seed/迁移入口）。  
+- Ascend 原型可触发并产出 I，保留核心加成。  
+- UI 覆盖资源栏、订单、升级、研究、Ascend、调试面板。  
