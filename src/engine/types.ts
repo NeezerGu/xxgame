@@ -1,5 +1,6 @@
 import type { ContractId } from "./data/contracts";
 import type { UpgradeId } from "./data/upgrades";
+import type { ResearchId } from "./data/research";
 
 export interface ProductionState {
   basePerSecond: number;
@@ -37,12 +38,21 @@ export interface ContractsState {
   maxSlots: number;
 }
 
+export interface ResearchNodeState {
+  purchased: boolean;
+}
+
+export interface ResearchState {
+  nodes: Record<ResearchId, ResearchNodeState>;
+}
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
   production: ProductionState;
   resources: ResourcesState;
   upgrades: Record<UpgradeId, number>;
+  research: ResearchState;
   lastFocusAtMs: number | null;
   contracts: ContractsState;
 }
@@ -52,4 +62,5 @@ export type Action =
   | { type: "buyUpgrade"; upgradeId: UpgradeId }
   | { type: "ascend" }
   | { type: "acceptContract"; contractId: ContractId }
-  | { type: "completeContract"; contractId: ContractId };
+  | { type: "completeContract"; contractId: ContractId }
+  | { type: "buyResearch"; researchId: ResearchId };

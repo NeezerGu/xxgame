@@ -6,11 +6,16 @@ import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
 import type { GameState } from "@engine/types";
 import { UPGRADE_DEFINITIONS } from "@engine/data/upgrades";
+import { RESEARCH_DEFINITIONS } from "@engine/data/research";
+import { canBuyResearch } from "@engine/research";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 
 const SAVE_KEY = "idle-proto-save";
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
+const TAB_STORAGE_KEY = "idle-proto-tab";
+
+type TabKey = "contracts" | "upgrades" | "research" | "ascend" | "dev";
 
 interface LoadedState {
   state: GameState;
@@ -45,7 +50,7 @@ function safeReadStorage(key: string): string | null {
   }
 }
 
-function App() {
+  function App() {
   const initial = useMemo(() => loadInitialState(), []);
   const [gameState, setGameState] = useState<GameState>(initial.state);
   const [lastSavedAtMs, setLastSavedAtMs] = useState<number | null>(initial.lastSavedAtMs);
@@ -54,6 +59,13 @@ function App() {
   const [importError, setImportError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [locale, setLocale] = useState<Locale>(() => getDefaultLocale());
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const saved = safeReadStorage(TAB_STORAGE_KEY);
+    if (saved === "contracts" || saved === "upgrades" || saved === "research" || saved === "ascend" || saved === "dev") {
+      return saved;
+    }
+    return "contracts";
+  });
 
   const gameStateRef = useRef(gameState);
   const lastTickRef = useRef(performance.now());
@@ -145,6 +157,10 @@ function App() {
     setGameState((prev) => applyAction(prev, { type: "ascend" }));
   };
 
+  const handleBuyResearch = (researchId: (typeof RESEARCH_DEFINITIONS)[number]["id"]) => {
+    setGameState((prev) => applyAction(prev, { type: "buyResearch", researchId }));
+  };
+
   const handleFastForward = (ms: number) => {
     setGameState((prev) => tick(prev, ms));
   };
@@ -173,6 +189,15 @@ function App() {
     const nextLocale = event.target.value as Locale;
     setLocale(nextLocale);
     persistLocale(nextLocale);
+  };
+
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    try {
+      window.localStorage.setItem(TAB_STORAGE_KEY, tab);
+    } catch {
+      // ignore storage errors
+    }
   };
 
   const ascendProgress = Math.min(1, gameState.resources.essence / ASCEND_THRESHOLD);
@@ -222,186 +247,275 @@ function App() {
         </div>
       </header>
 
-      <section className="card">
-        <div className="card-header">
-          <h2>{t("contracts.title", undefined, locale)}</h2>
-          <p className="muted small">{t("contracts.hint", undefined, locale)}</p>
-        </div>
-        <div className="contract-list">
-          {gameState.contracts.slots.map((slot) => {
-            const progress = getContractProgress(slot);
-            const isActive = slot.status === "active";
-            const isCompleted = slot.status === "completed";
-            return (
-              <div className="contract-row" key={slot.id}>
-                <div className="contract-info">
-                  <div className="contract-title">
-                    <strong>{t(slot.nameKey as MessageKey, undefined, locale)}</strong>
-                    <span className={`status-pill status-${slot.status}`}>
-                      {t(`contracts.status.${slot.status}` as MessageKey, undefined, locale)}
-                    </span>
-                  </div>
-                  <p className="muted">{t(slot.descriptionKey as MessageKey, undefined, locale)}</p>
-                  <div className="muted small">
-                    {t(
-                      "contracts.duration",
-                      {
-                        seconds: Math.round(slot.durationMs / 1000)
-                      },
-                      locale
-                    )}
-                  </div>
-                  {isActive ? (
-                    <div className="progress-bar contract-progress">
-                      <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+      <nav className="tabs">
+        {(
+          [
+            { key: "contracts", label: t("tab.contracts", undefined, locale) },
+            { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
+            { key: "research", label: t("tab.research", undefined, locale) },
+            { key: "ascend", label: t("tab.ascend", undefined, locale) },
+            { key: "dev", label: t("tab.dev", undefined, locale) }
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.key}
+            className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
+            onClick={() => handleTabChange(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "contracts" ? (
+        <>
+          <section className="card">
+            <div className="card-header">
+              <h2>{t("contracts.title", undefined, locale)}</h2>
+              <p className="muted small">{t("contracts.hint", undefined, locale)}</p>
+            </div>
+            <div className="contract-list">
+              {gameState.contracts.slots.map((slot) => {
+                const progress = getContractProgress(slot);
+                const isActive = slot.status === "active";
+                const isCompleted = slot.status === "completed";
+                return (
+                  <div className="contract-row" key={slot.id}>
+                    <div className="contract-info">
+                      <div className="contract-title">
+                        <strong>{t(slot.nameKey as MessageKey, undefined, locale)}</strong>
+                        <span className={`status-pill status-${slot.status}`}>
+                          {t(`contracts.status.${slot.status}` as MessageKey, undefined, locale)}
+                        </span>
+                      </div>
+                      <p className="muted">{t(slot.descriptionKey as MessageKey, undefined, locale)}</p>
+                      <div className="muted small">
+                        {t(
+                          "contracts.duration",
+                          {
+                            seconds: Math.round(slot.durationMs / 1000)
+                          },
+                          locale
+                        )}
+                      </div>
+                      {isActive ? (
+                        <div className="progress-bar contract-progress">
+                          <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
-                <div className="contract-actions">
-                  <div className="reward-row">
-                    {slot.reward.essence ? (
-                      <RewardBadge label={t("stats.essence", undefined, locale)} amount={slot.reward.essence} />
-                    ) : null}
-                    {slot.reward.research ? (
-                      <RewardBadge label={t("stats.research", undefined, locale)} amount={slot.reward.research} />
-                    ) : null}
-                    {slot.reward.reputation ? (
-                      <RewardBadge label={t("stats.reputation", undefined, locale)} amount={slot.reward.reputation} />
-                    ) : null}
+                    <div className="contract-actions">
+                      <div className="reward-row">
+                        {slot.reward.essence ? (
+                          <RewardBadge label={t("stats.essence", undefined, locale)} amount={slot.reward.essence} />
+                        ) : null}
+                        {slot.reward.research ? (
+                          <RewardBadge label={t("stats.research", undefined, locale)} amount={slot.reward.research} />
+                        ) : null}
+                        {slot.reward.reputation ? (
+                          <RewardBadge label={t("stats.reputation", undefined, locale)} amount={slot.reward.reputation} />
+                        ) : null}
+                      </div>
+                      {isCompleted ? (
+                        <button
+                          className="action-button"
+                          onClick={() => setGameState((prev) => applyAction(prev, { type: "completeContract", contractId: slot.id }))}
+                        >
+                          {t("contracts.claim", undefined, locale)}
+                        </button>
+                      ) : (
+                        <button
+                          className="action-button secondary"
+                          disabled={isActive}
+                          onClick={() => setGameState((prev) => applyAction(prev, { type: "acceptContract", contractId: slot.id }))}
+                        >
+                          {t("contracts.accept", undefined, locale)}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {isCompleted ? (
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card-header">
+              <h2>{t("actions.title", undefined, locale)}</h2>
+              <div className="actions-row">
+                <button
+                  className="action-button"
+                  onClick={handleFocus}
+                  disabled={focusCooldownRemaining > 0}
+                  title={t("actions.focusTooltip", undefined, locale)}
+                >
+                  {focusLabel}
+                </button>
+              </div>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {activeTab === "upgrades" ? (
+        <section className="card">
+          <div className="card-header">
+            <h2>{t("upgrades.title", undefined, locale)}</h2>
+          </div>
+          <div className="upgrade-list">
+            {UPGRADE_DEFINITIONS.map((upgrade) => {
+              const owned = gameState.upgrades[upgrade.id] ?? 0;
+              const affordable = gameState.resources.essence >= upgrade.cost;
+              return (
+                <div className="upgrade-row" key={upgrade.id}>
+                  <div>
+                    <strong>{t(upgrade.nameKey as MessageKey, undefined, locale)}</strong>
+                    <p className="muted">
+                      {t(upgrade.descriptionKey as MessageKey, undefined, locale)} •{" "}
+                      {t("upgrades.owned", { count: owned }, locale)}
+                    </p>
+                  </div>
+                  <div className="upgrade-actions">
+                    <span className="cost">{t("upgrades.cost", { cost: upgrade.cost }, locale)}</span>
                     <button
                       className="action-button"
-                      onClick={() => setGameState((prev) => applyAction(prev, { type: "completeContract", contractId: slot.id }))}
+                      onClick={() => handleBuyUpgrade(upgrade.id)}
+                      disabled={!affordable}
                     >
-                      {t("contracts.claim", undefined, locale)}
+                      {t("upgrades.buy", undefined, locale)}
                     </button>
-                  ) : (
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "research" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("research.title", undefined, locale)}</h2>
+              <p className="muted small">{t("research.hint", undefined, locale)}</p>
+            </div>
+            <div className="cost">
+              {t("research.balance", { amount: gameState.resources.research.toFixed(2) }, locale)}
+            </div>
+          </div>
+          <div className="upgrade-list">
+            {RESEARCH_DEFINITIONS.map((node) => {
+              const purchased = gameState.research.nodes[node.id]?.purchased;
+              const prerequisitesMet = (node.prerequisites ?? []).every(
+                (pre) => gameState.research.nodes[pre]?.purchased
+              );
+              const affordable = gameState.resources.research >= node.costResearch;
+              const buyable = canBuyResearch(gameState, node.id);
+              const buttonLabel = purchased
+                ? t("research.purchased", undefined, locale)
+                : !prerequisitesMet
+                  ? t("research.locked", undefined, locale)
+                  : t("research.buy", undefined, locale);
+              return (
+                <div className="upgrade-row" key={node.id}>
+                  <div>
+                    <strong>{t(node.nameKey as MessageKey, undefined, locale)}</strong>
+                    <p className="muted">{t(node.descriptionKey as MessageKey, undefined, locale)}</p>
+                    {!prerequisitesMet && !purchased ? (
+                      <p className="muted small">{t("research.prereqHint", undefined, locale)}</p>
+                    ) : null}
+                  </div>
+                  <div className="upgrade-actions">
+                    <span className="cost">
+                      {t("research.cost", { cost: node.costResearch }, locale)}
+                    </span>
                     <button
-                      className="action-button secondary"
-                      disabled={isActive}
-                      onClick={() => setGameState((prev) => applyAction(prev, { type: "acceptContract", contractId: slot.id }))}
+                      className="action-button"
+                      onClick={() => handleBuyResearch(node.id)}
+                      disabled={!buyable}
+                      title={
+                        purchased
+                          ? t("research.purchased", undefined, locale)
+                          : !affordable
+                            ? t("research.notEnough", undefined, locale)
+                            : undefined
+                      }
                     >
-                      {t("contracts.accept", undefined, locale)}
+                      {buttonLabel}
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-header">
-          <div>
-            <h2>{t("ascension.title", undefined, locale)}</h2>
-            <p>{ascendDescription}</p>
+              );
+            })}
           </div>
-          <button className="action-button" onClick={handleAscend} disabled={ascendProgress < 1}>
-            {t("ascension.button", undefined, locale)}
-          </button>
-        </div>
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${ascendProgress * 100}%` }} />
-        </div>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="card">
-        <div className="card-header">
-          <h2>{t("actions.title", undefined, locale)}</h2>
-          <div className="actions-row">
-            <button
-              className="action-button"
-              onClick={handleFocus}
-              disabled={focusCooldownRemaining > 0}
-              title={t("actions.focusTooltip", undefined, locale)}
-            >
-              {focusLabel}
-            </button>
-            <button className="action-button secondary" onClick={() => handleFastForward(10_000)}>
-              {t("actions.fastForward10", undefined, locale)}
-            </button>
-            <button className="action-button secondary" onClick={() => handleFastForward(60_000)}>
-              {t("actions.fastForward60", undefined, locale)}
+      {activeTab === "ascend" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("ascension.title", undefined, locale)}</h2>
+              <p>{ascendDescription}</p>
+            </div>
+            <button className="action-button" onClick={handleAscend} disabled={ascendProgress < 1}>
+              {t("ascension.button", undefined, locale)}
             </button>
           </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-header">
-          <h2>{t("upgrades.title", undefined, locale)}</h2>
-        </div>
-        <div className="upgrade-list">
-          {UPGRADE_DEFINITIONS.map((upgrade) => {
-            const owned = gameState.upgrades[upgrade.id] ?? 0;
-            const affordable = gameState.resources.essence >= upgrade.cost;
-            return (
-              <div className="upgrade-row" key={upgrade.id}>
-                <div>
-                  <strong>{t(upgrade.nameKey as MessageKey, undefined, locale)}</strong>
-                  <p className="muted">
-                    {t(upgrade.descriptionKey as MessageKey, undefined, locale)} •{" "}
-                    {t("upgrades.owned", { count: owned }, locale)}
-                  </p>
-                </div>
-                <div className="upgrade-actions">
-                  <span className="cost">{t("upgrades.cost", { cost: upgrade.cost }, locale)}</span>
-                  <button
-                    className="action-button"
-                    onClick={() => handleBuyUpgrade(upgrade.id)}
-                    disabled={!affordable}
-                  >
-                    {t("upgrades.buy", undefined, locale)}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-header">
-          <h2>{t("dev.title", undefined, locale)}</h2>
-          <div className="muted small">{autosaveLabel}</div>
-        </div>
-        <div className="dev-panel">
-          <div className="dev-controls">
-            <button className="action-button secondary" onClick={saveGame}>
-              {t("dev.saveNow", undefined, locale)}
-            </button>
-            <button
-              className="action-button secondary"
-              onClick={() => {
-                setImportText(exportText);
-                setImportError(null);
-              }}
-            >
-              {t("dev.loadExport", undefined, locale)}
-            </button>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${ascendProgress * 100}%` }} />
           </div>
-          <label className="muted">{t("dev.exportImportLabel", undefined, locale)}</label>
-          <textarea
-            value={importText}
-            onChange={(event) => setImportText(event.target.value)}
-            rows={4}
-            placeholder={t("dev.textareaPlaceholder", undefined, locale)}
-          />
-          <div className="dev-controls">
-            <button className="action-button secondary" onClick={saveGame}>
-              {t("dev.exportToTextarea", undefined, locale)}
-            </button>
-            <button className="action-button" onClick={handleImport}>
-              {t("dev.import", undefined, locale)}
-            </button>
+        </section>
+      ) : null}
+
+      {activeTab === "dev" ? (
+        <section className="card">
+          <div className="card-header">
+            <h2>{t("dev.title", undefined, locale)}</h2>
+            <div className="muted small">{autosaveLabel}</div>
           </div>
-          {importError ? (
-            <div className="error">{t("dev.importError", { message: importError }, locale)}</div>
-          ) : null}
-        </div>
-      </section>
+          <div className="dev-panel">
+            <div className="dev-controls">
+              <button className="action-button secondary" onClick={saveGame}>
+                {t("dev.saveNow", undefined, locale)}
+              </button>
+              <button
+                className="action-button secondary"
+                onClick={() => {
+                  setImportText(exportText);
+                  setImportError(null);
+                }}
+              >
+                {t("dev.loadExport", undefined, locale)}
+              </button>
+              <button className="action-button secondary" onClick={() => handleFastForward(10_000)}>
+                {t("actions.fastForward10", undefined, locale)}
+              </button>
+              <button className="action-button secondary" onClick={() => handleFastForward(60_000)}>
+                {t("actions.fastForward60", undefined, locale)}
+              </button>
+            </div>
+            <label className="muted">{t("dev.exportImportLabel", undefined, locale)}</label>
+            <textarea
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+              rows={4}
+              placeholder={t("dev.textareaPlaceholder", undefined, locale)}
+            />
+            <div className="dev-controls">
+              <button className="action-button secondary" onClick={saveGame}>
+                {t("dev.exportToTextarea", undefined, locale)}
+              </button>
+              <button className="action-button" onClick={handleImport}>
+                {t("dev.import", undefined, locale)}
+              </button>
+            </div>
+            {importError ? (
+              <div className="error">{t("dev.importError", { message: importError }, locale)}</div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

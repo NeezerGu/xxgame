@@ -13,6 +13,12 @@ export const enUSMessages: Record<MessageKey, string> = {
   "stats.reputation": "Reputation",
   "stats.essencePerSecond": "Essence/sec",
 
+  "tab.contracts": "Contracts",
+  "tab.upgrades": "Upgrades",
+  "tab.research": "Research",
+  "tab.ascend": "Ascension",
+  "tab.dev": "Dev",
+
   "ascension.title": "Ascension Progress",
   "ascension.description": "Reach {threshold} Essence to ascend. Progress: {progress}%",
   "ascension.button": "Ascend",
@@ -28,6 +34,22 @@ export const enUSMessages: Record<MessageKey, string> = {
   "upgrades.owned": "Owned: {count}",
   "upgrades.cost": "Cost: {cost}",
   "upgrades.buy": "Buy",
+
+  "research.title": "Research",
+  "research.hint": "Spend Research points to unlock lasting boosts.",
+  "research.cost": "Cost: {cost} R",
+  "research.buy": "Unlock",
+  "research.purchased": "Unlocked",
+  "research.locked": "Locked",
+  "research.notEnough": "Not enough Research",
+  "research.prereqHint": "Requires prerequisite node",
+  "research.balance": "Research: {amount}",
+  "research.contractSpeed.name": "Expedited Contracts",
+  "research.contractSpeed.description": "Contract timers advance 25% faster.",
+  "research.productionBoost.name": "Essence Refinement",
+  "research.productionBoost.description": "Essence production is multiplied by 1.10.",
+  "research.extraContractSlot.name": "Auxiliary Slot",
+  "research.extraContractSlot.description": "Adds +1 contract slot for concurrent work.",
 
   "dev.title": "Dev Panel",
   "dev.autosave": "Autosaves every 5s.",
@@ -63,5 +85,7 @@ export const enUSMessages: Record<MessageKey, string> = {
   "contracts.essenceDelivery.name": "Essence Delivery",
   "contracts.essenceDelivery.description": "Prepare a careful shipment of Essence samples for a client.",
   "contracts.labSupport.name": "Lab Support",
-  "contracts.labSupport.description": "Assist the lab with calibration and fetch components."
+  "contracts.labSupport.description": "Assist the lab with calibration and fetch components.",
+  "contracts.fieldAnalysis.name": "Field Analysis",
+  "contracts.fieldAnalysis.description": "Run comparative readings on field samples and validate results."
 };

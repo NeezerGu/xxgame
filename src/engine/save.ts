@@ -1,10 +1,12 @@
-import { createInitialContractsState } from "./contracts";
+import { createInitialContractsState, ensureContractSlotCount } from "./contracts";
 import { FOCUS_COOLDOWN_MS } from "./sim";
 import { calculateProduction } from "./state";
 import type { GameState } from "./types";
 import { initializeUpgradesRecord } from "./utils";
+import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
+import { BASE_CONTRACT_SLOTS } from "./data/constants";
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -32,6 +34,7 @@ export function createInitialState(nowMs: number): GameState {
       research: 0,
       reputation: 0
     },
+    research: initializeResearchState(),
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: nowMs - FOCUS_COOLDOWN_MS,
     production: {
@@ -73,6 +76,18 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
 
+  if (save.schemaVersion === 2) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+
   if (save.schemaVersion === 1) {
     const migratedState: GameState = {
       schemaVersion: SCHEMA_VERSION,
@@ -85,6 +100,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
       },
       production: save.state.production,
       upgrades: save.state.upgrades ?? initializeUpgradesRecord(),
+      research: initializeResearchState(),
       lastFocusAtMs: save.state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
       contracts: createInitialContractsState()
     };
@@ -107,8 +123,10 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
 }
 
 function applyStateDefaults(state: GameState): GameState {
+  const research = applyResearchDefaults(state.research);
   const withResources: GameState = {
     ...state,
+    schemaVersion: SCHEMA_VERSION,
     seed: state.seed ?? 1,
     resources: {
       essence: state.resources?.essence ?? 0,
@@ -118,13 +136,27 @@ function applyStateDefaults(state: GameState): GameState {
     },
     contracts: state.contracts
       ? {
-          maxSlots: state.contracts.maxSlots ?? state.contracts.slots.length ?? createInitialContractsState().maxSlots,
+          maxSlots:
+            state.contracts.maxSlots ??
+            state.contracts.slots?.length ??
+            createInitialContractsState().maxSlots,
           slots: state.contracts.slots ?? createInitialContractsState().slots
         }
       : createInitialContractsState(),
+    research,
     upgrades: state.upgrades ?? initializeUpgradesRecord(),
-    lastFocusAtMs: state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS
+    lastFocusAtMs: state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
+    production: state.production ?? {
+      basePerSecond: 1,
+      additiveBonus: 0,
+      multiplier: 1,
+      perSecond: 1
+    }
   };
 
-  return calculateProduction(withResources);
+  const desiredSlots =
+    BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
+  const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));
+
+  return calculateProduction(withContracts);
 }

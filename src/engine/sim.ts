@@ -3,6 +3,7 @@ import { ascend } from "./progression";
 import { calculateProduction } from "./state";
 import type { Action, GameState } from "./types";
 import { findUpgrade } from "./data/upgrades";
+import { applyResearchPurchase, getResearchModifiers } from "./research";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -15,6 +16,7 @@ export function tick(state: GameState, dtMs: number): GameState {
   const perSecond = state.production.perSecond;
   const deltaSeconds = dtMs / 1000;
   const nextEssence = state.resources.essence + perSecond * deltaSeconds;
+  const researchModifiers = getResearchModifiers(state);
 
   const withResources: GameState = {
     ...state,
@@ -24,7 +26,7 @@ export function tick(state: GameState, dtMs: number): GameState {
     }
   };
 
-  return progressContracts(withResources, dtMs);
+  return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult);
 }
 
 export function applyAction(state: GameState, action: Action): GameState {
@@ -74,6 +76,10 @@ export function applyAction(state: GameState, action: Action): GameState {
     }
     case "completeContract": {
       return completeContract(state, action.contractId);
+    }
+    case "buyResearch": {
+      const updated = applyResearchPurchase(state, action.researchId);
+      return calculateProduction(updated);
     }
     default: {
       return state;

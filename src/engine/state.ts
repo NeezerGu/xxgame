@@ -1,7 +1,9 @@
 import { findUpgrade } from "./data/upgrades";
+import { INSIGHT_PROD_BONUS_PER_POINT, BASE_CONTRACT_SLOTS } from "./data/constants";
 import type { GameState } from "./types";
 import { initializeUpgradesRecord } from "./utils";
 import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
+import { getResearchModifiers } from "./research";
 
 export const BASE_PRODUCTION = 1;
 
@@ -14,13 +16,17 @@ export function calculateProduction(state: GameState): GameState {
     return total;
   }, 0);
 
-  const multiplier = Object.entries(state.upgrades).reduce((total, [id, level]) => {
+  const upgradeMultiplier = Object.entries(state.upgrades).reduce((total, [id, level]) => {
     const upgrade = findUpgrade(id as Parameters<typeof findUpgrade>[0]);
     if (upgrade.effect.type === "mult") {
       return total * Math.pow(upgrade.effect.factor, level);
     }
     return total;
   }, 1);
+
+  const researchModifiers = getResearchModifiers(state);
+  const insightMultiplier = 1 + state.resources.insight * INSIGHT_PROD_BONUS_PER_POINT;
+  const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier;
 
   const basePerSecond = BASE_PRODUCTION;
   const perSecond = (basePerSecond + additiveBonus) * multiplier;
@@ -45,9 +51,10 @@ export function resetState(state: GameState): GameState {
       research: 0,
       reputation: 0
     },
+    research: state.research,
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: null,
-    contracts: createInitialContractsState(state.contracts.maxSlots)
+    contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots))
   };
   return calculateProduction(reset);
 }

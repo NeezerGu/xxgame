@@ -1,4 +1,4 @@
-export type ContractId = "starter-recon" | "essence-delivery" | "lab-support";
+export type ContractId = "starter-recon" | "essence-delivery" | "lab-support" | "field-analysis";
 
 export interface ContractDefinition {
   id: ContractId;
@@ -43,6 +43,17 @@ export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
     reward: {
       research: 8,
       essence: 45,
+      reputation: 2
+    }
+  },
+  {
+    id: "field-analysis",
+    nameKey: "contracts.fieldAnalysis.name",
+    descriptionKey: "contracts.fieldAnalysis.description",
+    durationMs: 25_000,
+    reward: {
+      research: 10,
+      essence: 60,
       reputation: 2
     }
   }

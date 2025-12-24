@@ -2,7 +2,7 @@
 
 ## 产出与乘区
 - 基础产出：`baseRateE`（E/s），可随升级等级线性提升；研究可解锁新基础产出或加速。
-- 乘区结构：`rate = baseRateE × (1 + upgradeAdd) × (1 + researchAdd) × (1 + insightAdd)`；避免无限叠乘，推荐将部分改为加法增益。
+- 乘区结构（当前实现）：`rate = (base + additive) × upgradeMult × researchMult × (1 + insight × 0.05)`，其中 Insight 每点提供 5% 产出乘区。
 - 冷却与主动：Focus 奖励可设为 `focusGain = baseFocus × (1 + modifiers)`，冷却随升级缩短但有最小值。
 
 ## 成本曲线（示例区间）
@@ -13,7 +13,12 @@
 ## 契约奖励与评分
 - 奖励模板：`rewardE = baseE × (1 + repTier)`，`rewardR = baseR × speedFactor`；Insight 仅在高阶契约或 Ascend 结算时给出。
 - 评分/Reputation：`repGain = baseRep × (qualityMultiplier)`；失败可减小或清零，不造成硬性惩罚。
-- 时长与约束：`duration = baseDuration / (1 + speedBonuses)`；可加入可选约束（限定资源类型/升级等级）以提升奖励倍数。
+- 时长与约束：`duration = baseDuration / (1 + speedBonuses)`；研究乘区可直接影响计时（如 +25% 速度），并可解锁额外槽位。
+
+## 研究节点示例（v0）
+- Contract Speed：成本 6 R，契约计时 ×1.25。
+- Essence Production：成本 10 R，产出 ×1.10。
+- Extra Contract Slot：成本 12 R，前置为 Essence Production，契约槽位 +1，需补齐额外契约模板。
 
 ## Ascend 收益计算策略
 - 目标：递进而非爆炸性增长，鼓励多次短跑。
