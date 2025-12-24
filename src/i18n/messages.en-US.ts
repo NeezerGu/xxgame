@@ -13,6 +13,12 @@ export const enUSMessages: Record<MessageKey, string> = {
   "stats.reputation": "Reputation",
   "stats.essencePerSecond": "Essence/sec",
 
+  "tab.contracts": "Contracts",
+  "tab.upgrades": "Upgrades",
+  "tab.research": "Research",
+  "tab.ascend": "Ascension",
+  "tab.dev": "Dev",
+
   "ascension.title": "Ascension Progress",
   "ascension.description": "Reach {threshold} Essence to ascend. Progress: {progress}%",
   "ascension.button": "Ascend",

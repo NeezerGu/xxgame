@@ -9,6 +9,12 @@ export const zhCNMessages = {
   "stats.reputation": "声望",
   "stats.essencePerSecond": "精华/秒",
 
+  "tab.contracts": "契约",
+  "tab.upgrades": "升级",
+  "tab.research": "研究",
+  "tab.ascend": "飞升",
+  "tab.dev": "开发",
+
   "ascension.title": "飞升进度",
   "ascension.description": "达到 {threshold} 精华即可飞升。进度：{progress}%",
   "ascension.button": "飞升",
