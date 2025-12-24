@@ -5,6 +5,8 @@ export const zhCNMessages = {
 
   "stats.essence": "精华",
   "stats.insight": "洞察",
+  "stats.research": "研究点",
+  "stats.reputation": "声望",
   "stats.essencePerSecond": "精华/秒",
 
   "ascension.title": "飞升进度",
@@ -42,5 +44,20 @@ export const zhCNMessages = {
   "upgrade.spark.name": "火花发生器",
   "upgrade.spark.description": "每秒额外 +0.5 精华",
   "upgrade.amplify.name": "精华放大器",
-  "upgrade.amplify.description": "精华产量 ×1.5"
+  "upgrade.amplify.description": "精华产量 ×1.5",
+
+  "contracts.title": "契约",
+  "contracts.hint": "选择契约、等待计时完成后领取奖励，获取研究点。",
+  "contracts.duration": "时长：{seconds} 秒",
+  "contracts.accept": "接单",
+  "contracts.claim": "领取奖励",
+  "contracts.status.idle": "空闲",
+  "contracts.status.active": "进行中",
+  "contracts.status.completed": "已完成",
+  "contracts.starterRecon.name": "遗迹勘察",
+  "contracts.starterRecon.description": "基础勘察任务，记录碎片线索并带回初步发现。",
+  "contracts.essenceDelivery.name": "精华配送",
+  "contracts.essenceDelivery.description": "打包精华样本，按约定时间送达委托方。",
+  "contracts.labSupport.name": "实验支援",
+  "contracts.labSupport.description": "协助实验室校准与取件，保持设备稳定运行。"
 } as const;

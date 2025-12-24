@@ -4,11 +4,11 @@ import type { GameState } from "./types";
 export const ASCEND_THRESHOLD = 1000;
 
 export function canAscend(state: GameState, threshold: number = ASCEND_THRESHOLD): boolean {
-  return state.essence >= threshold;
+  return state.resources.essence >= threshold;
 }
 
 export function calculateInsightGain(state: GameState, threshold: number = ASCEND_THRESHOLD): number {
-  return Math.floor(state.essence / threshold);
+  return Math.floor(state.resources.essence / threshold);
 }
 
 export function ascend(state: GameState, threshold: number = ASCEND_THRESHOLD): GameState {
@@ -21,6 +21,9 @@ export function ascend(state: GameState, threshold: number = ASCEND_THRESHOLD): 
 
   return {
     ...reset,
-    insight: state.insight + gainedInsight
+    resources: {
+      ...reset.resources,
+      insight: state.resources.insight + gainedInsight
+    }
   };
 }

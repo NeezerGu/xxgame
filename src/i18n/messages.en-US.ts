@@ -9,6 +9,8 @@ export const enUSMessages: Record<MessageKey, string> = {
 
   "stats.essence": "Essence",
   "stats.insight": "Insight",
+  "stats.research": "Research",
+  "stats.reputation": "Reputation",
   "stats.essencePerSecond": "Essence/sec",
 
   "ascension.title": "Ascension Progress",
@@ -46,5 +48,20 @@ export const enUSMessages: Record<MessageKey, string> = {
   "upgrade.spark.name": "Spark Generator",
   "upgrade.spark.description": "+0.5 Essence per second",
   "upgrade.amplify.name": "Essence Amplifier",
-  "upgrade.amplify.description": "Multiply Essence production by 1.5"
+  "upgrade.amplify.description": "Multiply Essence production by 1.5",
+
+  "contracts.title": "Contracts",
+  "contracts.hint": "Pick an order, wait for the timer, then claim rewards to earn Research.",
+  "contracts.duration": "Duration: {seconds}s",
+  "contracts.accept": "Accept",
+  "contracts.claim": "Claim",
+  "contracts.status.idle": "Idle",
+  "contracts.status.active": "Active",
+  "contracts.status.completed": "Completed",
+  "contracts.starterRecon.name": "Scout the Ruins",
+  "contracts.starterRecon.description": "Basic survey job. Gather notes and secure minor findings.",
+  "contracts.essenceDelivery.name": "Essence Delivery",
+  "contracts.essenceDelivery.description": "Prepare a careful shipment of Essence samples for a client.",
+  "contracts.labSupport.name": "Lab Support",
+  "contracts.labSupport.description": "Assist the lab with calibration and fetch components."
 };

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyAction, tick, FOCUS_COOLDOWN_MS, FOCUS_GAIN } from "./sim";
 import { computeOfflineProgress } from "./offline";
-import { createInitialState } from "./save";
+import { createInitialState, deserialize, SCHEMA_VERSION } from "./save";
+import { getContractProgress } from "./contracts";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -17,18 +18,22 @@ describe("simulation determinism", () => {
     const resultA = tick(initial, dt);
     const resultB = tick(initial, dt);
 
-    statesAreClose(resultA.essence, resultB.essence);
+    statesAreClose(resultA.resources.essence, resultB.resources.essence);
     statesAreClose(resultA.production.perSecond, resultB.production.perSecond);
   });
 });
 
 describe("upgrades", () => {
   it("buying an upgrade reduces essence and increases production", () => {
-    const starting = { ...createInitialState(0), essence: 100 };
+    const base = createInitialState(0);
+    const starting = {
+      ...base,
+      resources: { ...base.resources, essence: 100 }
+    };
 
     const updated = applyAction(starting, { type: "buyUpgrade", upgradeId: "spark" });
 
-    expect(updated.essence).toBeCloseTo(90);
+    expect(updated.resources.essence).toBeCloseTo(90);
     expect(updated.production.perSecond).toBeGreaterThan(starting.production.perSecond);
   });
 });
@@ -40,9 +45,9 @@ describe("focus action", () => {
     const second = applyAction(first, { type: "focus", performedAtMs: FOCUS_COOLDOWN_MS / 2 });
     const third = applyAction(second, { type: "focus", performedAtMs: FOCUS_COOLDOWN_MS + 10 });
 
-    expect(first.essence).toBeGreaterThan(initial.essence);
-    expect(second.essence).toBe(first.essence);
-    expect(third.essence).toBeCloseTo(first.essence + FOCUS_GAIN);
+    expect(first.resources.essence).toBeGreaterThan(initial.resources.essence);
+    expect(second.resources.essence).toBe(first.resources.essence);
+    expect(third.resources.essence).toBeCloseTo(first.resources.essence + FOCUS_GAIN);
   });
 });
 
@@ -53,6 +58,57 @@ describe("offline progress", () => {
     const { state, appliedMs } = computeOfflineProgress(starting, 0, tenHoursMs);
 
     expect(appliedMs).toBe(8 * 60 * 60 * 1000);
-    expect(state.essence).toBeCloseTo(28800);
+    expect(state.resources.essence).toBeCloseTo(28800);
+  });
+});
+
+describe("contracts", () => {
+  it("can accept, progress, and complete to gain rewards", () => {
+    const base = createInitialState(0);
+    const accepted = applyAction(base, { type: "acceptContract", contractId: "starter-recon" });
+    const activeSlot = accepted.contracts.slots.find((slot) => slot.id === "starter-recon");
+    expect(activeSlot?.status).toBe("active");
+
+    const progressed = tick(accepted, 12_000);
+    const completedSlot = progressed.contracts.slots.find((slot) => slot.id === "starter-recon");
+    expect(completedSlot?.status).toBe("completed");
+    expect(getContractProgress(completedSlot!)).toBeCloseTo(1);
+
+    const claimed = applyAction(progressed, { type: "completeContract", contractId: "starter-recon" });
+    const resetSlot = claimed.contracts.slots.find((slot) => slot.id === "starter-recon");
+    expect(resetSlot?.status).toBe("idle");
+    expect(claimed.resources.research).toBeGreaterThan(base.resources.research);
+    expect(claimed.resources.essence).toBeGreaterThan(base.resources.essence);
+  });
+
+  it("progresses during offline simulation", () => {
+    const base = createInitialState(0);
+    const accepted = applyAction(base, { type: "acceptContract", contractId: "essence-delivery" });
+    const { state } = computeOfflineProgress(accepted, 0, 25_000);
+    const slot = state.contracts.slots.find((s) => s.id === "essence-delivery");
+    expect(slot?.status).toBe("completed");
+  });
+});
+
+describe("save migration", () => {
+  it("upgrades legacy schema to latest and seeds new fields", () => {
+    const legacy = {
+      schemaVersion: 1,
+      savedAtMs: 0,
+      state: {
+        schemaVersion: 1,
+        essence: 10,
+        insight: 5,
+        production: createInitialState(0).production,
+        upgrades: createInitialState(0).upgrades,
+        lastFocusAtMs: null
+      }
+    };
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(migrated.state.resources.essence).toBe(10);
+    expect(migrated.state.resources.research).toBe(0);
+    expect(migrated.state.contracts.slots.length).toBeGreaterThanOrEqual(3);
   });
 });
