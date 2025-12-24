@@ -12,7 +12,7 @@
   - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number } }>;
   - `maxSlots`: number;
 }。
-- `research`: { nodes: record<string, { purchased: boolean, unlocked: boolean }> }。
+- `research`: { nodes: record<string, { purchased: boolean }> } — 节点一旦购买永久保留，用于施加乘区或解锁槽位。
 - `ascend`: { `runs`: number, `insightSpent`: number, `modifiers`: record<string, number> }。
 - `options`: { `devMode`: boolean } — 调试开关。
 
@@ -55,12 +55,12 @@
   - 派生：可能刷新契约池、触发研究解锁、更新 Ascend 进度。
 - `BUY_RESEARCH(id)`
   - 前置：节点已解锁、未购买，资源（R 或 I）足够，前置研究满足。
-  - 变更：扣除成本，标记 purchased；可能修改乘区、开启新槽位或自动化规则。
-  - 派生：更新可用动作列表、rates、契约生成参数。
+  - 变更：扣除成本，标记 purchased；永久作用于乘区（产出/契约速度/槽位等）。
+  - 派生：更新可用动作列表、rates、契约生成参数，必要时扩展契约槽位。
 - `ASCEND`
   - 前置：满足 Ascend 阈值（如累计 Essence 或契约评分）；不在离线结算中触发。
-  - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级，保留研究解锁（依设计），runs +1。
-  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates。
+  - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级与研究点余额，保留研究解锁，runs +1。
+  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates，并按研究加成生成契约槽位。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()`
   - 前置：payload 需通过 schemaVersion 校验和签名/校验（若有）。
   - 变更：导入时替换 GameState 并运行迁移；导出时序列化当前 GameState。
@@ -72,6 +72,7 @@
 
 ## 派生值计算
 - 产率（rates）：基于基础产出 × 升级乘区 × 研究乘区 × Insight 乘区；可缓存但需在相关动作后刷新。
-- 契约完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。
+- 产率（当前实现示例）：`perSecond = (base + additive) × upgradeMult × researchMult × (1 + insight × 0.05)`。
+- 契约完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。研究可提供速度乘区或额外槽位。
 - Ascend 预览：基于当前/累计指标计算，下行取整以防止浮点误差。
 - 离线模拟：`effectiveOffline = min(now - timestamp, offlineCapMs)`；按固定 tick 迭代调用 TICK，避免一次性大步长偏差。

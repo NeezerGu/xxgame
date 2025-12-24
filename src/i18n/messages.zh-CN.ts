@@ -25,6 +25,22 @@ export const zhCNMessages = {
   "upgrades.cost": "成本：{cost}",
   "upgrades.buy": "购买",
 
+  "research.title": "研究",
+  "research.hint": "消耗研究点解锁长期增益。",
+  "research.cost": "成本：{cost} 研究点",
+  "research.buy": "解锁",
+  "research.purchased": "已解锁",
+  "research.locked": "未解锁",
+  "research.notEnough": "研究点不足",
+  "research.prereqHint": "需要完成前置节点",
+  "research.balance": "研究点：{amount}",
+  "research.contractSpeed.name": "契约加速",
+  "research.contractSpeed.description": "契约计时速度提升 25%。",
+  "research.productionBoost.name": "精华提炼",
+  "research.productionBoost.description": "精华产量提升至 1.10 倍。",
+  "research.extraContractSlot.name": "扩展契约栏",
+  "research.extraContractSlot.description": "额外增加 1 个并行契约槽位。",
+
   "dev.title": "开发面板",
   "dev.autosave": "每 5 秒自动存档。",
   "dev.autosaveWithLast": "每 5 秒自动存档 • 上次存档 {time}。",
@@ -59,5 +75,7 @@ export const zhCNMessages = {
   "contracts.essenceDelivery.name": "精华配送",
   "contracts.essenceDelivery.description": "打包精华样本，按约定时间送达委托方。",
   "contracts.labSupport.name": "实验支援",
-  "contracts.labSupport.description": "协助实验室校准与取件，保持设备稳定运行。"
+  "contracts.labSupport.description": "协助实验室校准与取件，保持设备稳定运行。",
+  "contracts.fieldAnalysis.name": "现场分析",
+  "contracts.fieldAnalysis.description": "对外勤样本进行比对与复核，汇总关键读数。"
 } as const;

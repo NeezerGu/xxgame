@@ -3,6 +3,7 @@ import { applyAction, tick, FOCUS_COOLDOWN_MS, FOCUS_GAIN } from "./sim";
 import { computeOfflineProgress } from "./offline";
 import { createInitialState, deserialize, SCHEMA_VERSION } from "./save";
 import { getContractProgress } from "./contracts";
+import { calculateProduction } from "./state";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -35,6 +36,18 @@ describe("upgrades", () => {
 
     expect(updated.resources.essence).toBeCloseTo(90);
     expect(updated.production.perSecond).toBeGreaterThan(starting.production.perSecond);
+  });
+});
+
+describe("insight bonuses", () => {
+  it("scales production based on accumulated insight", () => {
+    const base = createInitialState(0);
+    const withInsight = calculateProduction({
+      ...base,
+      resources: { ...base.resources, insight: 10 }
+    });
+
+    expect(withInsight.production.perSecond).toBeGreaterThan(base.production.perSecond);
   });
 });
 
@@ -90,6 +103,26 @@ describe("contracts", () => {
   });
 });
 
+describe("research system", () => {
+  it("purchasing research spends currency and applies modifiers", () => {
+    const base = createInitialState(0);
+    const funded = {
+      ...base,
+      resources: { ...base.resources, research: 30 }
+    };
+
+    const withSpeed = applyAction(funded, { type: "buyResearch", researchId: "contractSpeed" });
+    expect(withSpeed.resources.research).toBeCloseTo(24);
+    expect(withSpeed.research.nodes.contractSpeed.purchased).toBe(true);
+
+    const withProduction = applyAction(withSpeed, { type: "buyResearch", researchId: "productionBoost" });
+    expect(withProduction.production.perSecond).toBeGreaterThan(withSpeed.production.perSecond);
+
+    const withSlot = applyAction(withProduction, { type: "buyResearch", researchId: "extraContractSlot" });
+    expect(withSlot.contracts.slots.length).toBeGreaterThan(base.contracts.slots.length);
+  });
+});
+
 describe("save migration", () => {
   it("upgrades legacy schema to latest and seeds new fields", () => {
     const legacy = {
@@ -109,6 +142,24 @@ describe("save migration", () => {
     expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
     expect(migrated.state.resources.essence).toBe(10);
     expect(migrated.state.resources.research).toBe(0);
+    expect(migrated.state.contracts.slots.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("hydrates missing research data when migrating schema v2 saves", () => {
+    const legacy = {
+      schemaVersion: 2,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 2
+      }
+    };
+    // @ts-expect-error simulate legacy save without research field
+    delete legacy.state.research;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(Object.values(migrated.state.research.nodes)).toHaveLength(3);
     expect(migrated.state.contracts.slots.length).toBeGreaterThanOrEqual(3);
   });
 });

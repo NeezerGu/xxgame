@@ -6,6 +6,8 @@ import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
 import type { GameState } from "@engine/types";
 import { UPGRADE_DEFINITIONS } from "@engine/data/upgrades";
+import { RESEARCH_DEFINITIONS } from "@engine/data/research";
+import { canBuyResearch } from "@engine/research";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 
 const SAVE_KEY = "idle-proto-save";
@@ -143,6 +145,10 @@ function App() {
 
   const handleAscend = () => {
     setGameState((prev) => applyAction(prev, { type: "ascend" }));
+  };
+
+  const handleBuyResearch = (researchId: (typeof RESEARCH_DEFINITIONS)[number]["id"]) => {
+    setGameState((prev) => applyAction(prev, { type: "buyResearch", researchId }));
   };
 
   const handleFastForward = (ms: number) => {
@@ -354,6 +360,63 @@ function App() {
                     disabled={!affordable}
                   >
                     {t("upgrades.buy", undefined, locale)}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-header">
+          <div>
+            <h2>{t("research.title", undefined, locale)}</h2>
+            <p className="muted small">{t("research.hint", undefined, locale)}</p>
+          </div>
+          <div className="cost">
+            {t("research.balance", { amount: gameState.resources.research.toFixed(2) }, locale)}
+          </div>
+        </div>
+        <div className="upgrade-list">
+          {RESEARCH_DEFINITIONS.map((node) => {
+            const purchased = gameState.research.nodes[node.id]?.purchased;
+            const prerequisitesMet = (node.prerequisites ?? []).every(
+              (pre) => gameState.research.nodes[pre]?.purchased
+            );
+            const affordable = gameState.resources.research >= node.costResearch;
+            const buyable = canBuyResearch(gameState, node.id);
+            const buttonLabel = purchased
+              ? t("research.purchased", undefined, locale)
+              : !prerequisitesMet
+                ? t("research.locked", undefined, locale)
+                : t("research.buy", undefined, locale);
+            return (
+              <div className="upgrade-row" key={node.id}>
+                <div>
+                  <strong>{t(node.nameKey as MessageKey, undefined, locale)}</strong>
+                  <p className="muted">{t(node.descriptionKey as MessageKey, undefined, locale)}</p>
+                  {!prerequisitesMet && !purchased ? (
+                    <p className="muted small">{t("research.prereqHint", undefined, locale)}</p>
+                  ) : null}
+                </div>
+                <div className="upgrade-actions">
+                  <span className="cost">
+                    {t("research.cost", { cost: node.costResearch }, locale)}
+                  </span>
+                  <button
+                    className="action-button"
+                    onClick={() => handleBuyResearch(node.id)}
+                    disabled={!buyable}
+                    title={
+                      purchased
+                        ? t("research.purchased", undefined, locale)
+                        : !affordable
+                          ? t("research.notEnough", undefined, locale)
+                          : undefined
+                    }
+                  >
+                    {buttonLabel}
                   </button>
                 </div>
               </div>

@@ -1,0 +1,2 @@
+export const INSIGHT_PROD_BONUS_PER_POINT = 0.05;
+export const BASE_CONTRACT_SLOTS = 3;
