@@ -3,6 +3,7 @@ import { computeOfflineProgress } from "@engine/offline";
 import { ASCEND_THRESHOLD } from "@engine/progression";
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
+import { getContractProgress } from "@engine/contracts";
 import type { GameState } from "@engine/types";
 import { UPGRADE_DEFINITIONS } from "@engine/data/upgrades";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
@@ -174,7 +175,7 @@ function App() {
     persistLocale(nextLocale);
   };
 
-  const ascendProgress = Math.min(1, gameState.essence / ASCEND_THRESHOLD);
+  const ascendProgress = Math.min(1, gameState.resources.essence / ASCEND_THRESHOLD);
   const focusLabel =
     focusCooldownRemaining > 0
       ? t("actions.focusWithCooldown", { seconds: (focusCooldownRemaining / 1000).toFixed(1) }, locale)
@@ -210,14 +211,86 @@ function App() {
           </div>
         </div>
         <div className="stats-grid">
-          <Stat label={t("stats.essence", undefined, locale)} value={gameState.essence} />
-          <Stat label={t("stats.insight", undefined, locale)} value={gameState.insight} />
+          <Stat label={t("stats.essence", undefined, locale)} value={gameState.resources.essence} />
+          <Stat label={t("stats.research", undefined, locale)} value={gameState.resources.research} />
+          <Stat label={t("stats.reputation", undefined, locale)} value={gameState.resources.reputation} />
+          <Stat label={t("stats.insight", undefined, locale)} value={gameState.resources.insight} />
           <Stat
             label={t("stats.essencePerSecond", undefined, locale)}
             value={gameState.production.perSecond}
           />
         </div>
       </header>
+
+      <section className="card">
+        <div className="card-header">
+          <h2>{t("contracts.title", undefined, locale)}</h2>
+          <p className="muted small">{t("contracts.hint", undefined, locale)}</p>
+        </div>
+        <div className="contract-list">
+          {gameState.contracts.slots.map((slot) => {
+            const progress = getContractProgress(slot);
+            const isActive = slot.status === "active";
+            const isCompleted = slot.status === "completed";
+            return (
+              <div className="contract-row" key={slot.id}>
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t(slot.nameKey as MessageKey, undefined, locale)}</strong>
+                    <span className={`status-pill status-${slot.status}`}>
+                      {t(`contracts.status.${slot.status}` as MessageKey, undefined, locale)}
+                    </span>
+                  </div>
+                  <p className="muted">{t(slot.descriptionKey as MessageKey, undefined, locale)}</p>
+                  <div className="muted small">
+                    {t(
+                      "contracts.duration",
+                      {
+                        seconds: Math.round(slot.durationMs / 1000)
+                      },
+                      locale
+                    )}
+                  </div>
+                  {isActive ? (
+                    <div className="progress-bar contract-progress">
+                      <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+                    </div>
+                  ) : null}
+                </div>
+                <div className="contract-actions">
+                  <div className="reward-row">
+                    {slot.reward.essence ? (
+                      <RewardBadge label={t("stats.essence", undefined, locale)} amount={slot.reward.essence} />
+                    ) : null}
+                    {slot.reward.research ? (
+                      <RewardBadge label={t("stats.research", undefined, locale)} amount={slot.reward.research} />
+                    ) : null}
+                    {slot.reward.reputation ? (
+                      <RewardBadge label={t("stats.reputation", undefined, locale)} amount={slot.reward.reputation} />
+                    ) : null}
+                  </div>
+                  {isCompleted ? (
+                    <button
+                      className="action-button"
+                      onClick={() => setGameState((prev) => applyAction(prev, { type: "completeContract", contractId: slot.id }))}
+                    >
+                      {t("contracts.claim", undefined, locale)}
+                    </button>
+                  ) : (
+                    <button
+                      className="action-button secondary"
+                      disabled={isActive}
+                      onClick={() => setGameState((prev) => applyAction(prev, { type: "acceptContract", contractId: slot.id }))}
+                    >
+                      {t("contracts.accept", undefined, locale)}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="card">
         <div className="card-header">
@@ -263,7 +336,7 @@ function App() {
         <div className="upgrade-list">
           {UPGRADE_DEFINITIONS.map((upgrade) => {
             const owned = gameState.upgrades[upgrade.id] ?? 0;
-            const affordable = gameState.essence >= upgrade.cost;
+            const affordable = gameState.resources.essence >= upgrade.cost;
             return (
               <div className="upgrade-row" key={upgrade.id}>
                 <div>
@@ -339,6 +412,14 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value.toFixed(2)}</div>
     </div>
+  );
+}
+
+function RewardBadge({ label, amount }: { label: string; amount: number }) {
+  return (
+    <span className="reward-badge">
+      {label}: {amount}
+    </span>
   );
 }
 

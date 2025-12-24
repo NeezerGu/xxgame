@@ -5,13 +5,12 @@
 - `seed`: number — 随机种子，所有 RNG 基于此并存档。
 - `timestamp`: number — 上次保存/模拟的毫秒时间戳。
 - `elapsedOffline`: number — 累计离线毫秒，用于上限控制。
-- `resources`: { `essence`: number, `insight`: number, `research`: number }。
+- `resources`: { `essence`: number, `insight`: number, `research`: number, `reputation`: number }。
 - `rates`: { `essencePerSecond`: number } — 可由派生计算得到，存放缓存/上次计算值。
 - `upgrades`: record<string, { level: number, unlocked: boolean }>。
 - `contracts`: {
-  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed' | 'failed', `requirements`: {...}, `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number }, `constraints`: {...} }>;
+  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number } }>;
   - `maxSlots`: number;
-  - `reputation`: number;
 }。
 - `research`: { nodes: record<string, { purchased: boolean, unlocked: boolean }> }。
 - `ascend`: { `runs`: number, `insightSpent`: number, `modifiers`: record<string, number> }。

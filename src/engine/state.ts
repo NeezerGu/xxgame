@@ -1,6 +1,7 @@
 import { findUpgrade } from "./data/upgrades";
 import type { GameState } from "./types";
 import { initializeUpgradesRecord } from "./utils";
+import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
 
 export const BASE_PRODUCTION = 1;
 
@@ -38,9 +39,26 @@ export function calculateProduction(state: GameState): GameState {
 export function resetState(state: GameState): GameState {
   const reset: GameState = {
     ...state,
-    essence: 0,
+    resources: {
+      essence: 0,
+      insight: state.resources.insight,
+      research: 0,
+      reputation: 0
+    },
     upgrades: initializeUpgradesRecord(),
-    lastFocusAtMs: null
+    lastFocusAtMs: null,
+    contracts: createInitialContractsState(state.contracts.maxSlots)
   };
   return calculateProduction(reset);
+}
+
+export function syncContractDefinitions(state: GameState): GameState {
+  const updatedSlots = state.contracts.slots.map((slot) => refreshContractFromDefinition(slot));
+  return {
+    ...state,
+    contracts: {
+      ...state.contracts,
+      slots: updatedSlots
+    }
+  };
 }

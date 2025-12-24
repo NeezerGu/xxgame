@@ -1,3 +1,4 @@
+import { acceptContract, completeContract, progressContracts } from "./contracts";
 import { ascend } from "./progression";
 import { calculateProduction } from "./state";
 import type { Action, GameState } from "./types";
@@ -13,12 +14,17 @@ export function tick(state: GameState, dtMs: number): GameState {
 
   const perSecond = state.production.perSecond;
   const deltaSeconds = dtMs / 1000;
-  const nextEssence = state.essence + perSecond * deltaSeconds;
+  const nextEssence = state.resources.essence + perSecond * deltaSeconds;
 
-  return {
+  const withResources: GameState = {
     ...state,
-    essence: nextEssence
+    resources: {
+      ...state.resources,
+      essence: nextEssence
+    }
   };
+
+  return progressContracts(withResources, dtMs);
 }
 
 export function applyAction(state: GameState, action: Action): GameState {
@@ -30,7 +36,10 @@ export function applyAction(state: GameState, action: Action): GameState {
 
       return {
         ...state,
-        essence: state.essence + FOCUS_GAIN,
+        resources: {
+          ...state.resources,
+          essence: state.resources.essence + FOCUS_GAIN
+        },
         lastFocusAtMs: action.performedAtMs
       };
     }
@@ -39,7 +48,7 @@ export function applyAction(state: GameState, action: Action): GameState {
       const currentLevel = state.upgrades[upgradeDef.id] ?? 0;
       const cost = upgradeDef.cost;
 
-      if (state.essence < cost) {
+      if (state.resources.essence < cost) {
         return state;
       }
 
@@ -49,13 +58,22 @@ export function applyAction(state: GameState, action: Action): GameState {
       } as GameState["upgrades"];
       const updated = {
         ...state,
-        essence: state.essence - cost,
+        resources: {
+          ...state.resources,
+          essence: state.resources.essence - cost
+        },
         upgrades: newUpgrades
       };
       return calculateProduction(updated);
     }
     case "ascend": {
       return calculateProduction(ascend(state));
+    }
+    case "acceptContract": {
+      return acceptContract(state, action.contractId);
+    }
+    case "completeContract": {
+      return completeContract(state, action.contractId);
     }
     default: {
       return state;
