@@ -2,8 +2,8 @@ export type UpgradeId = "spark" | "amplify";
 
 export interface UpgradeDefinition {
   id: UpgradeId;
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   cost: number;
   effect:
     | { type: "add"; amount: number }
@@ -13,15 +13,15 @@ export interface UpgradeDefinition {
 export const UPGRADE_DEFINITIONS: UpgradeDefinition[] = [
   {
     id: "spark",
-    name: "Spark Generator",
-    description: "+0.5 Essence per second",
+    nameKey: "upgrade.spark.name",
+    descriptionKey: "upgrade.spark.description",
     cost: 10,
     effect: { type: "add", amount: 0.5 }
   },
   {
     id: "amplify",
-    name: "Essence Amplifier",
-    description: "Multiply Essence production by 1.5",
+    nameKey: "upgrade.amplify.name",
+    descriptionKey: "upgrade.amplify.description",
     cost: 50,
     effect: { type: "mult", factor: 1.5 }
   }
