@@ -22,6 +22,11 @@ export const enUSMessages: Record<MessageKey, string> = {
   "ascension.title": "Ascension Progress",
   "ascension.description": "Reach {threshold} Essence to ascend. Progress: {progress}%",
   "ascension.button": "Ascend",
+  "ascension.previewTitle": "Ascension Preview",
+  "ascension.previewGain": "Expected Insight: {amount}",
+  "ascension.previewBreakdown": "From Essence: {essence} • From Contracts: {contracts}",
+  "ascension.previewRunStats": "This run — Essence earned: {essence} • Contracts completed: {contracts}",
+  "ascension.previewNotReady": "Ascend condition not met yet",
 
   "actions.title": "Actions",
   "actions.focus": "Focus",

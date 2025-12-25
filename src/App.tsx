@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { computeOfflineProgress } from "@engine/offline";
-import { ASCEND_THRESHOLD } from "@engine/progression";
+import { ASCEND_THRESHOLD, calculateInsightGain, canAscend } from "@engine/progression";
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
@@ -202,6 +202,8 @@ function safeReadStorage(key: string): string | null {
   };
 
   const ascendProgress = Math.min(1, gameState.resources.essence / ASCEND_THRESHOLD);
+  const ascendReady = canAscend(gameState);
+  const insightPreview = calculateInsightGain(gameState);
   const reputation = gameState.resources.reputation;
   const activeContracts = gameState.contracts.slots.filter((slot) => slot.status === "active").length;
   const unlockedContracts = CONTRACT_DEFINITIONS.filter(
@@ -526,12 +528,39 @@ function safeReadStorage(key: string): string | null {
               <h2>{t("ascension.title", undefined, locale)}</h2>
               <p>{ascendDescription}</p>
             </div>
-            <button className="action-button" onClick={handleAscend} disabled={ascendProgress < 1}>
+            <button className="action-button" onClick={handleAscend} disabled={!ascendReady}>
               {t("ascension.button", undefined, locale)}
             </button>
           </div>
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${ascendProgress * 100}%` }} />
+          </div>
+          <div className="muted small" style={{ marginTop: "8px" }}>
+            <strong>{t("ascension.previewTitle", undefined, locale)}</strong>
+          </div>
+          <div className="muted" style={{ marginTop: "4px" }}>
+            {t("ascension.previewGain", { amount: insightPreview.gain }, locale)}
+            {!ascendReady ? ` • ${t("ascension.previewNotReady", undefined, locale)}` : null}
+          </div>
+          <div className="muted small" style={{ marginTop: "4px" }}>
+            {t(
+              "ascension.previewBreakdown",
+              {
+                essence: insightPreview.essenceTerm.toFixed(2),
+                contracts: insightPreview.contractTerm.toFixed(2)
+              },
+              locale
+            )}
+          </div>
+          <div className="muted small" style={{ marginTop: "4px" }}>
+            {t(
+              "ascension.previewRunStats",
+              {
+                essence: gameState.runStats.essenceEarned.toFixed(2),
+                contracts: gameState.runStats.contractsCompleted
+              },
+              locale
+            )}
           </div>
         </section>
       ) : null}

@@ -126,6 +126,11 @@ export function completeContract(state: GameState, contractId: ContractId): Game
   return {
     ...state,
     resources: updatedResources,
+    runStats: {
+      ...state.runStats,
+      essenceEarned: state.runStats.essenceEarned + (reward.essence ?? 0),
+      contractsCompleted: state.runStats.contractsCompleted + 1
+    },
     contracts: replaceSlot(state.contracts, slotIndex, resetSlot)
   };
 }

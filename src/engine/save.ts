@@ -6,7 +6,7 @@ import { initializeUpgradesRecord } from "./utils";
 import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -33,6 +33,10 @@ export function createInitialState(nowMs: number): GameState {
       insight: 0,
       research: 0,
       reputation: 0
+    },
+    runStats: {
+      essenceEarned: 0,
+      contractsCompleted: 0
     },
     research: initializeResearchState(),
     upgrades: initializeUpgradesRecord(),
@@ -73,6 +77,18 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     return {
       ...save,
       state: applyStateDefaults(save.state)
+    };
+  }
+
+  if (save.schemaVersion === 3) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
     };
   }
 
@@ -133,6 +149,10 @@ function applyStateDefaults(state: GameState): GameState {
       insight: state.resources?.insight ?? 0,
       research: state.resources?.research ?? 0,
       reputation: state.resources?.reputation ?? 0
+    },
+    runStats: {
+      essenceEarned: state.runStats?.essenceEarned ?? 0,
+      contractsCompleted: state.runStats?.contractsCompleted ?? 0
     },
     contracts: state.contracts
       ? {

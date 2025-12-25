@@ -8,6 +8,7 @@
 - `resources`: { `essence`: number, `insight`: number, `research`: number, `reputation`: number }。
 - `rates`: { `essencePerSecond`: number } — 可由派生计算得到，存放缓存/上次计算值。
 - `upgrades`: record<string, { level: number, unlocked: boolean }>。
+- `runStats`: { `essenceEarned`: number, `contractsCompleted`: number } — 记录本轮累计获得的精华与完成契约数，用于飞升收益公式。
 - `contracts`: {
   - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number } }>;
   - `maxSlots`: number;
