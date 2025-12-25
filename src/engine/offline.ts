@@ -1,8 +1,7 @@
 import { tick } from "./sim";
 import { calculateProduction } from "./state";
 import type { GameState } from "./types";
-
-const DEFAULT_OFFLINE_CAP_MS = 8 * 60 * 60 * 1000;
+import { OFFLINE_CAP_MS } from "./data/constants";
 
 export interface OfflineResult {
   state: GameState;
@@ -14,7 +13,7 @@ export function computeOfflineProgress(
   state: GameState,
   lastSavedAtMs: number,
   nowMs: number,
-  maxMs: number = DEFAULT_OFFLINE_CAP_MS
+  maxMs: number = OFFLINE_CAP_MS
 ): OfflineResult {
   const elapsedMs = Math.max(0, nowMs - lastSavedAtMs);
   const appliedMs = Math.min(elapsedMs, maxMs);
