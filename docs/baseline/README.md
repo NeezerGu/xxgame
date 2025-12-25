@@ -10,6 +10,14 @@
 npm run sim -- --seconds 600 --tickMs 50 --seed 123 --timelineEverySec 10 --out docs/baseline/sim_10m.json
 ```
 
+或使用快捷脚本：
+
+```bash
+npm run sim:baseline
+```
+
+完成后即可得到 10 分钟与 60 分钟的基线文件。
+
 可调参数（均为可选）：
 
 - `--seconds`: 模拟时长（秒），默认 600。
@@ -20,6 +28,19 @@ npm run sim -- --seconds 600 --tickMs 50 --seed 123 --timelineEverySec 10 --out 
 - `--weightResearch` / `--weightReputation` / `--weightEssence`: 契约评分权重，默认分别为 3 / 2 / 1。
 
 同样参数和 seed 会得到完全一致的输出，便于回归比对。
+
+若调整了数值或策略，请先更新基线再提交：
+
+```bash
+npm run sim:baseline
+```
+
+更新后可用回归脚本校验：
+
+```bash
+npm run sim:check          # 默认只检查 10 分钟基线
+npm run sim:check -- --full # 同时检查 60 分钟基线
+```
 
 ## 输出字段
 

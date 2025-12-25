@@ -1,20 +1,33 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const DEFAULT_CONFIG = {
+const DEFAULT_WEIGHTS = {
+  research: 3,
+  reputation: 2,
+  essence: 1
+};
+
+export const DEFAULT_CONFIG = {
   seconds: 600,
   tickMs: 50,
   seed: 1,
   timelineEverySec: 60,
   out: "sim-output.json",
-  weights: {
-    research: 3,
-    reputation: 2,
-    essence: 1
-  }
+  weights: DEFAULT_WEIGHTS
 };
+
+function normalizeConfig(config = {}) {
+  return {
+    ...DEFAULT_CONFIG,
+    ...config,
+    weights: {
+      ...DEFAULT_WEIGHTS,
+      ...(config.weights ?? {})
+    }
+  };
+}
 
 function parseArgs(argv) {
   const config = structuredClone(DEFAULT_CONFIG);
@@ -61,7 +74,7 @@ function parseArgs(argv) {
   return config;
 }
 
-function runBuild() {
+export function runBuild() {
   const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
   execFileSync(npmCmd, ["run", "build:engine"], { stdio: "inherit" });
 }
@@ -104,9 +117,8 @@ function snapshotState(state, totals, elapsedMs) {
   };
 }
 
-async function run() {
-  const config = parseArgs(process.argv.slice(2));
-  runBuild();
+export async function runSim(userConfig = {}) {
+  const config = normalizeConfig(userConfig);
 
   const { tick, applyAction } = await import("../dist/engine/sim.js");
   const { createInitialState } = await import("../dist/engine/save.js");
@@ -267,10 +279,16 @@ async function run() {
     upgradesLevels: state.upgrades
   };
 
-  const output = {
+  return {
     summary,
     timeline
   };
+}
+
+async function runFromCli() {
+  const config = parseArgs(process.argv.slice(2));
+  runBuild();
+  const output = await runSim(config);
 
   const outputPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", config.out);
   mkdirSync(dirname(outputPath), { recursive: true });
@@ -279,7 +297,9 @@ async function run() {
   console.log(`Sim output written to ${outputPath}`);
 }
 
-run().catch((error) => {
-  console.error("Simulation failed:", error);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runFromCli().catch((error) => {
+    console.error("Simulation failed:", error);
+    process.exit(1);
+  });
+}
