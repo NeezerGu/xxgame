@@ -35,8 +35,9 @@ Goal: a playable vertical slice with deterministic simulation, offline progress,
 - 任何改动都要遵守确定性引擎与数据驱动约束，不引入外部依赖或服务。
 
 ## Definition of done for each task
-- Provide a short plan before edits.
-- Implement changes.
-- Run tests/build locally (npm scripts) and ensure they pass.
-- Summarize what changed and which commands were run.
+- Implement changes。
+- Run tests/build locally (npm scripts) and ensure they pass。
+- Summarize what changed and which commands were run。
+- 不要在输出计划后停下来等用户确认；除非缺少关键信息无法继续，否则直接开始修改并运行命令。
+- 如需计划，最多 3 条 bullet，且紧跟实现，不要分多条消息。
 - 输出规范：不要写长前言或冗长计划；完成后用中文简要总结改动与执行的验证命令。
