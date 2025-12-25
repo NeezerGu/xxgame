@@ -7,6 +7,7 @@ import { getContractProgress } from "@engine/contracts";
 import type { GameState } from "@engine/types";
 import { UPGRADE_DEFINITIONS } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
+import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 
@@ -201,6 +202,17 @@ function safeReadStorage(key: string): string | null {
   };
 
   const ascendProgress = Math.min(1, gameState.resources.essence / ASCEND_THRESHOLD);
+  const reputation = gameState.resources.reputation;
+  const activeContracts = gameState.contracts.slots.filter((slot) => slot.status === "active").length;
+  const unlockedContracts = CONTRACT_DEFINITIONS.filter(
+    (def) => (def.requiredReputation ?? 0) <= reputation
+  ).length;
+  const totalContracts = CONTRACT_DEFINITIONS.length;
+  const nextUnlockReputation = CONTRACT_DEFINITIONS.filter(
+    (def) => (def.requiredReputation ?? 0) > reputation
+  )
+    .map((def) => def.requiredReputation ?? 0)
+    .sort((a, b) => a - b)[0];
   const focusLabel =
     focusCooldownRemaining > 0
       ? t("actions.focusWithCooldown", { seconds: (focusCooldownRemaining / 1000).toFixed(1) }, locale)
@@ -274,11 +286,49 @@ function safeReadStorage(key: string): string | null {
               <h2>{t("contracts.title", undefined, locale)}</h2>
               <p className="muted small">{t("contracts.hint", undefined, locale)}</p>
             </div>
+            <div className="reputation-summary">
+              <div>
+                {t(
+                  "contracts.reputationSummary",
+                  { reputation, unlocked: unlockedContracts, total: totalContracts },
+                  locale
+                )}
+              </div>
+              <div className="muted small">
+                {nextUnlockReputation !== undefined
+                  ? t(
+                      "contracts.nextUnlock",
+                      { required: nextUnlockReputation, delta: Math.max(0, nextUnlockReputation - reputation) },
+                      locale
+                    )
+                  : t("contracts.allUnlocked", undefined, locale)}
+              </div>
+              <div className="muted small">
+                {t("contracts.capacity", { active: activeContracts, max: gameState.contracts.maxSlots }, locale)}
+              </div>
+            </div>
             <div className="contract-list">
               {gameState.contracts.slots.map((slot) => {
+                const def = CONTRACT_DEFINITIONS.find((item) => item.id === slot.id);
+                const requiredReputation = def?.requiredReputation ?? 0;
+                const acceptCost = def?.acceptCostEssence ?? 0;
+                const requiredEssencePerSecond = def?.requiredEssencePerSecond ?? 0;
+                const isUnlocked = reputation >= requiredReputation;
                 const progress = getContractProgress(slot);
                 const isActive = slot.status === "active";
                 const isCompleted = slot.status === "completed";
+                const hasCapacity = activeContracts < gameState.contracts.maxSlots || isActive || isCompleted;
+                const hasEssenceForCost = gameState.resources.essence >= acceptCost;
+                const meetsEssenceRate = gameState.production.perSecond >= requiredEssencePerSecond;
+                const disabledReason = !isUnlocked
+                  ? t("contracts.requireReputation", { required: requiredReputation }, locale)
+                  : !hasCapacity
+                    ? t("contracts.reason.capacity", { max: gameState.contracts.maxSlots }, locale)
+                    : !hasEssenceForCost
+                      ? t("contracts.reason.cost", { cost: acceptCost }, locale)
+                      : !meetsEssenceRate
+                        ? t("contracts.reason.eps", { eps: requiredEssencePerSecond }, locale)
+                        : undefined;
                 return (
                   <div className="contract-row" key={slot.id}>
                     <div className="contract-info">
@@ -298,6 +348,21 @@ function safeReadStorage(key: string): string | null {
                           locale
                         )}
                       </div>
+                      {acceptCost > 0 ? (
+                        <div className="muted small">
+                          {t("contracts.acceptCost", { cost: acceptCost }, locale)}
+                        </div>
+                      ) : null}
+                      {requiredEssencePerSecond > 0 ? (
+                        <div className="muted small">
+                          {t("contracts.requiredEps", { eps: requiredEssencePerSecond }, locale)}
+                        </div>
+                      ) : null}
+                      {!isUnlocked ? (
+                        <div className="muted small warning">
+                          {t("contracts.requireReputation", { required: requiredReputation }, locale)}
+                        </div>
+                      ) : null}
                       {isActive ? (
                         <div className="progress-bar contract-progress">
                           <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
@@ -326,12 +391,15 @@ function safeReadStorage(key: string): string | null {
                       ) : (
                         <button
                           className="action-button secondary"
-                          disabled={isActive}
+                          disabled={isActive || !isUnlocked || !hasCapacity || !hasEssenceForCost || !meetsEssenceRate}
                           onClick={() => setGameState((prev) => applyAction(prev, { type: "acceptContract", contractId: slot.id }))}
                         >
-                          {t("contracts.accept", undefined, locale)}
+                          {isUnlocked
+                            ? t("contracts.accept", undefined, locale)
+                            : t("contracts.locked", undefined, locale)}
                         </button>
                       )}
+                      {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
                     </div>
                   </div>
                 );

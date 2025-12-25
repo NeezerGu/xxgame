@@ -307,3 +307,18 @@ textarea {
 .contract-progress {
   margin-top: 0.5rem;
 }
+
+.reputation-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  margin-bottom: 0.5rem;
+}
+
+.warning {
+  color: #b45309;
+}

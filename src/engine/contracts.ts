@@ -5,9 +5,7 @@ import type { ContractsState, ContractSlot, GameState } from "./types";
 const DEFAULT_CONTRACT_SLOTS = BASE_CONTRACT_SLOTS;
 
 export function createInitialContractsState(maxSlots: number = DEFAULT_CONTRACT_SLOTS): ContractsState {
-  const desiredSlots = Math.min(maxSlots, CONTRACT_DEFINITIONS.length);
-  const available = CONTRACT_DEFINITIONS.slice(0, desiredSlots);
-  const slots: ContractSlot[] = available.map((def) => ({
+  const slots: ContractSlot[] = CONTRACT_DEFINITIONS.map((def) => ({
     id: def.id,
     nameKey: def.nameKey,
     descriptionKey: def.descriptionKey,
@@ -19,7 +17,7 @@ export function createInitialContractsState(maxSlots: number = DEFAULT_CONTRACT_
 
   return {
     slots,
-    maxSlots: desiredSlots
+    maxSlots: Math.min(maxSlots, CONTRACT_DEFINITIONS.length)
   };
 }
 
@@ -30,6 +28,24 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
   }
 
   const slot = state.contracts.slots[slotIndex];
+  const activeSlots = state.contracts.slots.filter((s) => s.status === "active").length;
+  const def = findContractDefinition(contractId);
+  const requiredReputation = def.requiredReputation ?? 0;
+  const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
+  const acceptCostEssence = def.acceptCostEssence ?? 0;
+
+  if (state.resources.reputation < requiredReputation) {
+    return state;
+  }
+  if (state.production.perSecond < requiredEssencePerSecond) {
+    return state;
+  }
+  if (state.resources.essence < acceptCostEssence) {
+    return state;
+  }
+  if (activeSlots >= state.contracts.maxSlots) {
+    return state;
+  }
   if (slot.status !== "idle") {
     return state;
   }
@@ -42,6 +58,10 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
 
   return {
     ...state,
+    resources: {
+      ...state.resources,
+      essence: state.resources.essence - acceptCostEssence
+    },
     contracts: replaceSlot(state.contracts, slotIndex, updatedSlot)
   };
 }
@@ -130,30 +150,22 @@ export function refreshContractFromDefinition(slot: ContractSlot): ContractSlot 
 
 export function ensureContractSlotCount(state: GameState, desiredMaxSlots: number): GameState {
   const clampedDesired = Math.min(desiredMaxSlots, CONTRACT_DEFINITIONS.length);
-  const currentSlots = state.contracts.slots.length;
-  if (clampedDesired <= currentSlots && clampedDesired <= state.contracts.maxSlots) {
-    return state;
+  const withAllDefinitions = ensureAllDefinitionsPresent(state.contracts);
+  if (clampedDesired <= withAllDefinitions.maxSlots) {
+    if (withAllDefinitions === state.contracts) {
+      return state;
+    }
+    return {
+      ...state,
+      contracts: withAllDefinitions
+    };
   }
-
-  const targetSlots = Math.max(clampedDesired, currentSlots);
-  const needed = Math.max(0, targetSlots - currentSlots);
-
-  const newSlots: ContractSlot[] = CONTRACT_DEFINITIONS.slice(currentSlots, targetSlots).map((def) => ({
-    id: def.id,
-    nameKey: def.nameKey,
-    descriptionKey: def.descriptionKey,
-    durationMs: def.durationMs,
-    reward: def.reward,
-    elapsedMs: 0,
-    status: "idle"
-  }));
 
   return {
     ...state,
     contracts: {
-      ...state.contracts,
-      maxSlots: Math.max(state.contracts.maxSlots, targetSlots),
-      slots: [...state.contracts.slots, ...newSlots]
+      ...withAllDefinitions,
+      maxSlots: Math.max(withAllDefinitions.maxSlots, clampedDesired)
     }
   };
 }
@@ -164,5 +176,29 @@ function replaceSlot(contracts: ContractsState, index: number, slot: ContractSlo
   return {
     ...contracts,
     slots: nextSlots
+  };
+}
+
+function ensureAllDefinitionsPresent(contracts: ContractsState): ContractsState {
+  const existingIds = new Set(contracts.slots.map((slot) => slot.id));
+  const missingDefs = CONTRACT_DEFINITIONS.filter((def) => !existingIds.has(def.id));
+
+  if (missingDefs.length === 0) {
+    return contracts;
+  }
+
+  const newSlots: ContractSlot[] = missingDefs.map((def) => ({
+    id: def.id,
+    nameKey: def.nameKey,
+    descriptionKey: def.descriptionKey,
+    durationMs: def.durationMs,
+    reward: def.reward,
+    elapsedMs: 0,
+    status: "idle"
+  }));
+
+  return {
+    ...contracts,
+    slots: [...contracts.slots, ...newSlots]
   };
 }

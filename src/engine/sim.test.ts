@@ -96,10 +96,79 @@ describe("contracts", () => {
 
   it("progresses during offline simulation", () => {
     const base = createInitialState(0);
-    const accepted = applyAction(base, { type: "acceptContract", contractId: "essence-delivery" });
+    const funded = {
+      ...base,
+      resources: { ...base.resources, essence: 10 }
+    };
+    const accepted = applyAction(funded, { type: "acceptContract", contractId: "essence-delivery" });
     const { state } = computeOfflineProgress(accepted, 0, 25_000);
     const slot = state.contracts.slots.find((s) => s.id === "essence-delivery");
     expect(slot?.status).toBe("completed");
+  });
+
+  it("does not accept a contract when reputation is insufficient", () => {
+    const base = createInitialState(0);
+    const attempted = applyAction(base, { type: "acceptContract", contractId: "field-analysis" });
+    const slot = attempted.contracts.slots.find((s) => s.id === "field-analysis");
+    expect(slot?.status).toBe("idle");
+  });
+
+  it("accepts a contract when reputation meets requirement", () => {
+    const base = createInitialState(0);
+    const withReputation = {
+      ...base,
+      resources: { ...base.resources, reputation: 20, essence: 40 },
+      production: { ...base.production, basePerSecond: 2, perSecond: 2 }
+    };
+    const accepted = applyAction(withReputation, { type: "acceptContract", contractId: "field-analysis" });
+    const slot = accepted.contracts.slots.find((s) => s.id === "field-analysis");
+    expect(slot?.status).toBe("active");
+  });
+
+  it("does not accept when essence cost is not met", () => {
+    const base = createInitialState(0);
+    const funded = {
+      ...base,
+      resources: { ...base.resources, essence: 3 }
+    };
+    const attempted = applyAction(funded, { type: "acceptContract", contractId: "essence-delivery" });
+    const slot = attempted.contracts.slots.find((s) => s.id === "essence-delivery");
+    expect(slot?.status).toBe("idle");
+    expect(attempted.resources.essence).toBeCloseTo(3);
+  });
+
+  it("accepts and deducts cost when constraints are met", () => {
+    const base = createInitialState(0);
+    const funded = {
+      ...base,
+      resources: { ...base.resources, reputation: 15, essence: 20 },
+      production: { ...base.production, basePerSecond: 2, perSecond: 2 }
+    };
+    const accepted = applyAction(funded, { type: "acceptContract", contractId: "field-analysis" });
+    const slot = accepted.contracts.slots.find((s) => s.id === "field-analysis");
+    expect(slot?.status).toBe("active");
+    expect(accepted.resources.essence).toBeCloseTo(5);
+  });
+
+  it("requires sufficient production rate to accept constrained contracts", () => {
+    const base = createInitialState(0);
+    const funded = {
+      ...base,
+      resources: { ...base.resources, reputation: 30, essence: 100 }
+    };
+    const blocked = applyAction(funded, { type: "acceptContract", contractId: "stabilize-array" });
+    const blockedSlot = blocked.contracts.slots.find((s) => s.id === "stabilize-array");
+    expect(blockedSlot?.status).toBe("idle");
+    expect(blocked.resources.essence).toBeCloseTo(100);
+
+    const boosted = {
+      ...funded,
+      production: { ...funded.production, basePerSecond: 3, perSecond: 3 }
+    };
+    const allowed = applyAction(boosted, { type: "acceptContract", contractId: "stabilize-array" });
+    const allowedSlot = allowed.contracts.slots.find((s) => s.id === "stabilize-array");
+    expect(allowedSlot?.status).toBe("active");
+    expect(allowed.resources.essence).toBeCloseTo(70);
   });
 });
 
@@ -119,7 +188,7 @@ describe("research system", () => {
     expect(withProduction.production.perSecond).toBeGreaterThan(withSpeed.production.perSecond);
 
     const withSlot = applyAction(withProduction, { type: "buyResearch", researchId: "extraContractSlot" });
-    expect(withSlot.contracts.slots.length).toBeGreaterThan(base.contracts.slots.length);
+    expect(withSlot.contracts.maxSlots).toBeGreaterThan(base.contracts.maxSlots);
   });
 });
 
