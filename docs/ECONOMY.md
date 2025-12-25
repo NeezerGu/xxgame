@@ -25,6 +25,7 @@
 - 目标：递进而非爆炸性增长，鼓励多次短跑。
 - 建议公式：`insightGain = floor(A × log(1 + totalE / B) + C × contractsCompleted^0.5)`；A/B/C 为可调参数，依赖累计 Essence 与契约完成度。
 - 保留与重置：Ascend 重置 Essence/契约进度/部分升级，保留研究解锁与少量关键升级；Insight 乘区作用于被动产出与契约速度。
+- 数据源：`totalE` 取本轮累计获得的精华（不含花费扣减），`contractsCompleted` 为本轮完成契约次数，均在 runStats 中维护。
 
 ## 离线收益上限策略
 - 离线时长上限：`offlineCapMs`（默认 8h，可调）；若超出则截断。

@@ -4,6 +4,7 @@ import { computeOfflineProgress } from "./offline";
 import { createInitialState, deserialize, SCHEMA_VERSION } from "./save";
 import { getContractProgress } from "./contracts";
 import { calculateProduction } from "./state";
+import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -61,6 +62,27 @@ describe("focus action", () => {
     expect(first.resources.essence).toBeGreaterThan(initial.resources.essence);
     expect(second.resources.essence).toBe(first.resources.essence);
     expect(third.resources.essence).toBeCloseTo(first.resources.essence + FOCUS_GAIN);
+  });
+});
+
+describe("run stats tracking", () => {
+  it("accumulates essence earned during tick and focus", () => {
+    const base = createInitialState(0);
+    const ticked = tick(base, 1000);
+    expect(ticked.runStats.essenceEarned).toBeCloseTo(base.production.perSecond);
+
+    const focused = applyAction(ticked, { type: "focus", performedAtMs: FOCUS_COOLDOWN_MS + 10 });
+    expect(focused.runStats.essenceEarned).toBeCloseTo(ticked.runStats.essenceEarned + FOCUS_GAIN);
+  });
+
+  it("increments contracts completed and essence from contract rewards", () => {
+    const base = createInitialState(0);
+    const accepted = applyAction(base, { type: "acceptContract", contractId: "starter-recon" });
+    const progressed = tick(accepted, 10_000);
+    const claimed = applyAction(progressed, { type: "completeContract", contractId: "starter-recon" });
+
+    expect(claimed.runStats.contractsCompleted).toBe(1);
+    expect(claimed.runStats.essenceEarned).toBeCloseTo(progressed.runStats.essenceEarned + 15);
   });
 });
 
@@ -192,6 +214,57 @@ describe("research system", () => {
   });
 });
 
+describe("insight gain calculation", () => {
+  it("produces deterministic output for identical state", () => {
+    const base = createInitialState(0);
+    const rich = {
+      ...base,
+      resources: { ...base.resources, essence: ASCEND_THRESHOLD },
+      runStats: { essenceEarned: 1500, contractsCompleted: 3 }
+    };
+
+    const first = calculateInsightGain(rich);
+    const second = calculateInsightGain(rich);
+    expect(first.gain).toBe(second.gain);
+    expect(first.essenceTerm).toBeCloseTo(second.essenceTerm);
+    expect(first.contractTerm).toBeCloseTo(second.contractTerm);
+  });
+
+  it("does not decrease when contracts completed increases", () => {
+    const base = createInitialState(0);
+    const low = {
+      ...base,
+      resources: { ...base.resources, essence: ASCEND_THRESHOLD },
+      runStats: { essenceEarned: 2000, contractsCompleted: 1 }
+    };
+    const high = {
+      ...low,
+      runStats: { essenceEarned: 2000, contractsCompleted: 4 }
+    };
+
+    const lowGain = calculateInsightGain(low);
+    const highGain = calculateInsightGain(high);
+    expect(highGain.gain).toBeGreaterThanOrEqual(lowGain.gain);
+  });
+
+  it("does not decrease when essence earned increases", () => {
+    const base = createInitialState(0);
+    const lower = {
+      ...base,
+      resources: { ...base.resources, essence: ASCEND_THRESHOLD },
+      runStats: { essenceEarned: 500, contractsCompleted: 2 }
+    };
+    const higher = {
+      ...lower,
+      runStats: { essenceEarned: 1200, contractsCompleted: 2 }
+    };
+
+    const lowerGain = calculateInsightGain(lower);
+    const higherGain = calculateInsightGain(higher);
+    expect(higherGain.gain).toBeGreaterThanOrEqual(lowerGain.gain);
+  });
+});
+
 describe("save migration", () => {
   it("upgrades legacy schema to latest and seeds new fields", () => {
     const legacy = {
@@ -230,5 +303,21 @@ describe("save migration", () => {
     expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
     expect(Object.values(migrated.state.research.nodes)).toHaveLength(3);
     expect(migrated.state.contracts.slots.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("applies defaults for missing run stats data", () => {
+    const legacy = {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        // @ts-expect-error simulate legacy save without runStats
+        runStats: undefined
+      }
+    };
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.state.runStats.essenceEarned).toBe(0);
+    expect(migrated.state.runStats.contractsCompleted).toBe(0);
   });
 });

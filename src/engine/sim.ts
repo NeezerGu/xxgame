@@ -15,7 +15,8 @@ export function tick(state: GameState, dtMs: number): GameState {
 
   const perSecond = state.production.perSecond;
   const deltaSeconds = dtMs / 1000;
-  const nextEssence = state.resources.essence + perSecond * deltaSeconds;
+  const deltaEssence = perSecond * deltaSeconds;
+  const nextEssence = state.resources.essence + deltaEssence;
   const researchModifiers = getResearchModifiers(state);
 
   const withResources: GameState = {
@@ -23,6 +24,10 @@ export function tick(state: GameState, dtMs: number): GameState {
     resources: {
       ...state.resources,
       essence: nextEssence
+    },
+    runStats: {
+      ...state.runStats,
+      essenceEarned: state.runStats.essenceEarned + deltaEssence
     }
   };
 
@@ -41,6 +46,10 @@ export function applyAction(state: GameState, action: Action): GameState {
         resources: {
           ...state.resources,
           essence: state.resources.essence + FOCUS_GAIN
+        },
+        runStats: {
+          ...state.runStats,
+          essenceEarned: state.runStats.essenceEarned + FOCUS_GAIN
         },
         lastFocusAtMs: action.performedAtMs
       };

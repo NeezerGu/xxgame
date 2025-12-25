@@ -46,11 +46,17 @@ export interface ResearchState {
   nodes: Record<ResearchId, ResearchNodeState>;
 }
 
+export interface RunStatsState {
+  essenceEarned: number;
+  contractsCompleted: number;
+}
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
   production: ProductionState;
   resources: ResourcesState;
+  runStats: RunStatsState;
   upgrades: Record<UpgradeId, number>;
   research: ResearchState;
   lastFocusAtMs: number | null;

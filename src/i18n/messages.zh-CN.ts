@@ -18,6 +18,11 @@ export const zhCNMessages = {
   "ascension.title": "飞升进度",
   "ascension.description": "达到 {threshold} 精华即可飞升。进度：{progress}%",
   "ascension.button": "飞升",
+  "ascension.previewTitle": "收益预览",
+  "ascension.previewGain": "预计获得洞察：{amount}",
+  "ascension.previewBreakdown": "其中 精华贡献：{essence} • 契约贡献：{contracts}",
+  "ascension.previewRunStats": "本轮累计精华：{essence} • 完成契约：{contracts} 个",
+  "ascension.previewNotReady": "尚未达到飞升条件",
 
   "actions.title": "操作",
   "actions.focus": "专注",

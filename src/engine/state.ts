@@ -51,6 +51,10 @@ export function resetState(state: GameState): GameState {
       research: 0,
       reputation: 0
     },
+    runStats: {
+      essenceEarned: 0,
+      contractsCompleted: 0
+    },
     research: state.research,
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: null,
