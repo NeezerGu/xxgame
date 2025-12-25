@@ -16,7 +16,8 @@
     "sim": "node scripts/sim-runner.js",
     "electron:run": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win",
-    "dist:win:portable": "npm run build && electron-builder --win portable"
+    "dist:win:portable": "npm run build && electron-builder --win portable",
+    "dist:win:portable:nosign": "npm run build && electron-builder --win portable"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -54,7 +55,8 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "signAndEditExecutable": false
     },
     "asar": true
   }
