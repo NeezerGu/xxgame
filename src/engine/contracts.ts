@@ -77,13 +77,19 @@ export function progressContracts(state: GameState, dtMs: number, contractSpeedM
 
     const nextElapsed = Math.min(slot.elapsedMs + effectiveDtMs, slot.durationMs);
     const isCompleted = nextElapsed >= slot.durationMs;
-    changed = changed || nextElapsed !== slot.elapsedMs || isCompleted !== (slot.status === "completed");
+    const nextStatus: ContractSlot["status"] = isCompleted ? "completed" : "active";
 
-    return {
+    if (nextElapsed === slot.elapsedMs && slot.status === nextStatus) {
+      return slot;
+    }
+
+    changed = true;
+    const updatedSlot: ContractSlot = {
       ...slot,
       elapsedMs: nextElapsed,
-      status: isCompleted ? "completed" : "active"
+      status: nextStatus
     };
+    return updatedSlot;
   });
 
   if (!changed) return state;

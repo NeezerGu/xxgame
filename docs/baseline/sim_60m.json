@@ -1,0 +1,661 @@
+{
+  "summary": {
+    "config": {
+      "seconds": 3600,
+      "tickMs": 50,
+      "seed": 123,
+      "timelineEverySec": 60,
+      "weights": {
+        "research": 3,
+        "reputation": 2,
+        "essence": 1
+      }
+    },
+    "totals": {
+      "ascends": 20518,
+      "insightGained": 184541,
+      "contractsAccepted": 34855,
+      "contractsCompleted": 76,
+      "upgradesPurchased": 1130189,
+      "researchPurchasedCount": 3
+    },
+    "final": {
+      "resources": {
+        "essence": 507.54275000000007,
+        "insight": 184541,
+        "research": 0,
+        "reputation": 0
+      },
+      "productionPerSecond": 10150.855000000001,
+      "reputation": 0,
+      "researchPoints": 0,
+      "insight": 184541,
+      "essence": 507.54275000000007,
+      "runStats": {
+        "essenceEarned": 507.54275000000007,
+        "contractsCompleted": 0
+      }
+    },
+    "purchasedResearch": [
+      "contractSpeed",
+      "productionBoost",
+      "extraContractSlot"
+    ],
+    "upgradesLevels": {
+      "spark": 0,
+      "amplify": 0
+    }
+  },
+  "timeline": [
+    {
+      "tSec": 0,
+      "essence": 0,
+      "eps": 1,
+      "insight": 0,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 0,
+      "contractsCompletedTotal": 0
+    },
+    {
+      "tSec": 60,
+      "essence": 10.35750000000008,
+      "eps": 66,
+      "insight": 0,
+      "reputation": 11,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 10
+    },
+    {
+      "tSec": 120,
+      "essence": 105.07000000000465,
+      "eps": 1965.7,
+      "insight": 0,
+      "reputation": 28,
+      "researchPoints": 46,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 24
+    },
+    {
+      "tSec": 180,
+      "essence": 11.933250000000081,
+      "eps": 41.47000000000001,
+      "insight": 38,
+      "reputation": 3,
+      "researchPoints": 7,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 37
+    },
+    {
+      "tSec": 240,
+      "essence": 25.017125000000167,
+      "eps": 461.7525,
+      "insight": 67,
+      "reputation": 3,
+      "researchPoints": 7,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 49
+    },
+    {
+      "tSec": 300,
+      "essence": 60.91900000000056,
+      "eps": 1073.7375000000002,
+      "insight": 117,
+      "reputation": 1,
+      "researchPoints": 2,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 59
+    },
+    {
+      "tSec": 360,
+      "essence": 0.6160000000000001,
+      "eps": 12.320000000000002,
+      "insight": 204,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 68
+    },
+    {
+      "tSec": 420,
+      "essence": 5.767750000000008,
+      "eps": 26.152500000000003,
+      "insight": 297,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 73
+    },
+    {
+      "tSec": 480,
+      "essence": 220.76575000000054,
+      "eps": 4302.4575,
+      "insight": 411,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 540,
+      "essence": 44.194000000000074,
+      "eps": 842.2700000000001,
+      "insight": 569,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 600,
+      "essence": 22.304250000000025,
+      "eps": 346.28000000000003,
+      "insight": 767,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 660,
+      "essence": 71.67350000000008,
+      "eps": 1279.575,
+      "insight": 1014,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 720,
+      "essence": 89.27687500000008,
+      "eps": 1590.4625,
+      "insight": 1325,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 780,
+      "essence": 193.64600000000016,
+      "eps": 3745.3900000000003,
+      "insight": 1704,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 840,
+      "essence": 685.3300000000007,
+      "eps": 13658.590000000002,
+      "insight": 2168,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 900,
+      "essence": 10.108500000000001,
+      "eps": 151.085,
+      "insight": 2727,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 2,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 960,
+      "essence": 885.1981250000003,
+      "eps": 17645.5125,
+      "insight": 3375,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1020,
+      "essence": 18.737500000000004,
+      "eps": 344.85,
+      "insight": 4160,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1080,
+      "essence": 14.085500000000003,
+      "eps": 281.71000000000004,
+      "insight": 5102,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1140,
+      "essence": 27.576875000000012,
+      "eps": 510.9225000000001,
+      "insight": 6173,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 2,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1200,
+      "essence": 1294.6860000000004,
+      "eps": 25879.040000000005,
+      "insight": 7332,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1260,
+      "essence": 52.39375000000001,
+      "eps": 965.2500000000001,
+      "insight": 8755,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1320,
+      "essence": 56.69450000000002,
+      "eps": 1129.2600000000002,
+      "insight": 10246,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 2,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1380,
+      "essence": 559.6145000000002,
+      "eps": 11139.590000000002,
+      "insight": 11894,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 2,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1440,
+      "essence": 778.8072500000001,
+      "eps": 15524.5475,
+      "insight": 13749,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 2,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1500,
+      "essence": 1297.3947500000002,
+      "eps": 25895.100000000002,
+      "insight": 15674,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1560,
+      "essence": 1685.7400000000005,
+      "eps": 33699.600000000006,
+      "insight": 17740,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1620,
+      "essence": 2726.6976250000007,
+      "eps": 54403.965000000004,
+      "insight": 20167,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 2,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1680,
+      "essence": 62.86500000000001,
+      "eps": 1257.3000000000002,
+      "insight": 22840,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1740,
+      "essence": 69.23675000000001,
+      "eps": 1384.7350000000004,
+      "insight": 25157,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1800,
+      "essence": 76.35375,
+      "eps": 1527.075,
+      "insight": 27745,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1860,
+      "essence": 84.39475000000002,
+      "eps": 1687.8950000000002,
+      "insight": 30669,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1920,
+      "essence": 93.37350000000002,
+      "eps": 1867.4700000000003,
+      "insight": 33934,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 1980,
+      "essence": 103.32300000000004,
+      "eps": 2066.4600000000005,
+      "insight": 37552,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2040,
+      "essence": 114.32300000000001,
+      "eps": 2286.46,
+      "insight": 41552,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2100,
+      "essence": 126.38725000000002,
+      "eps": 2527.7450000000003,
+      "insight": 45939,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2160,
+      "essence": 136.98575000000002,
+      "eps": 2739.715,
+      "insight": 49793,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2220,
+      "essence": 145.23575000000002,
+      "eps": 2904.715,
+      "insight": 52793,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2280,
+      "essence": 154.18150000000003,
+      "eps": 3083.6300000000006,
+      "insight": 56046,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2340,
+      "essence": 164.08150000000003,
+      "eps": 3281.6300000000006,
+      "insight": 59646,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2400,
+      "essence": 173.98150000000004,
+      "eps": 3479.6300000000006,
+      "insight": 63246,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2460,
+      "essence": 184.52775000000003,
+      "eps": 3690.5550000000003,
+      "insight": 67081,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2520,
+      "essence": 196.07775000000004,
+      "eps": 3921.5550000000003,
+      "insight": 71281,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2580,
+      "essence": 207.62775000000002,
+      "eps": 4152.555,
+      "insight": 75481,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2640,
+      "essence": 220.48675000000003,
+      "eps": 4409.735000000001,
+      "insight": 80157,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2700,
+      "essence": 233.68675000000005,
+      "eps": 4673.735000000001,
+      "insight": 84957,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2760,
+      "essence": 247.43400000000003,
+      "eps": 4948.68,
+      "insight": 89956,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2820,
+      "essence": 262.28400000000005,
+      "eps": 5245.68,
+      "insight": 95356,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2880,
+      "essence": 277.134,
+      "eps": 5542.68,
+      "insight": 100756,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 2940,
+      "essence": 293.315,
+      "eps": 5866.3,
+      "insight": 106640,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3000,
+      "essence": 309.81500000000005,
+      "eps": 6196.3,
+      "insight": 112640,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3060,
+      "essence": 326.40575000000007,
+      "eps": 6528.115000000001,
+      "insight": 118673,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3120,
+      "essence": 344.5557500000001,
+      "eps": 6891.115000000002,
+      "insight": 125273,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3180,
+      "essence": 362.7057500000001,
+      "eps": 7254.115000000002,
+      "insight": 131873,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3240,
+      "essence": 381.62300000000005,
+      "eps": 7632.460000000001,
+      "insight": 138752,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3300,
+      "essence": 401.42300000000006,
+      "eps": 8028.460000000001,
+      "insight": 145952,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3360,
+      "essence": 421.22300000000007,
+      "eps": 8424.460000000001,
+      "insight": 153152,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3420,
+      "essence": 441.94150000000013,
+      "eps": 8838.830000000002,
+      "insight": 160686,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3480,
+      "essence": 463.3915000000001,
+      "eps": 9267.830000000002,
+      "insight": 168486,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3540,
+      "essence": 484.8415000000001,
+      "eps": 9696.830000000002,
+      "insight": 176286,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    },
+    {
+      "tSec": 3600,
+      "essence": 507.54275000000007,
+      "eps": 10150.855000000001,
+      "insight": 184541,
+      "reputation": 0,
+      "researchPoints": 0,
+      "contractsActive": 1,
+      "contractsCompletedTotal": 76
+    }
+  ]
+}

@@ -23,6 +23,10 @@ interface LegacySerializedSaveV1 {
   state: LegacyGameStateV1;
 }
 
+function isLegacySerializedSaveV1(save: SerializedSave | LegacySerializedSaveV1): save is LegacySerializedSaveV1 {
+  return save.schemaVersion === 1 && "state" in save && "essence" in save.state;
+}
+
 export function createInitialState(nowMs: number): GameState {
   const seed = Math.max(1, Math.floor(nowMs % 1_000_000));
   const base: GameState = {
@@ -104,7 +108,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
 
-  if (save.schemaVersion === 1) {
+  if (isLegacySerializedSaveV1(save)) {
     const migratedState: GameState = {
       schemaVersion: SCHEMA_VERSION,
       seed: Math.max(1, Math.floor(save.savedAtMs % 1_000_000)),
@@ -113,6 +117,10 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
         insight: save.state.insight ?? 0,
         research: 0,
         reputation: 0
+      },
+      runStats: {
+        essenceEarned: 0,
+        contractsCompleted: 0
       },
       production: save.state.production,
       upgrades: save.state.upgrades ?? initializeUpgradesRecord(),
