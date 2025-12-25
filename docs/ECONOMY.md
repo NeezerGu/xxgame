@@ -14,6 +14,7 @@
 - 奖励模板：`rewardE = baseE × (1 + repTier)`，`rewardR = baseR × speedFactor`；Insight 仅在高阶契约或 Ascend 结算时给出。
 - 评分/Reputation：`repGain = baseRep × (qualityMultiplier)`；失败可减小或清零，不造成硬性惩罚。
 - 时长与约束：`duration = baseDuration / (1 + speedBonuses)`；研究乘区可直接影响计时（如 +25% 速度），并可解锁额外槽位。
+- 声望阶梯（示例门槛）：0 声望提供基础勘察/配送/支援单，10 声望解锁更快收益的中阶单，25/50 声望解锁高阶稳态与封印档案等高回报单。
 
 ## 研究节点示例（v0）
 - Contract Speed：成本 6 R，契约计时 ×1.25。

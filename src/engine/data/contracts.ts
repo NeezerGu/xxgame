@@ -1,10 +1,22 @@
-export type ContractId = "starter-recon" | "essence-delivery" | "lab-support" | "field-analysis";
+export type ContractId =
+  | "starter-recon"
+  | "essence-delivery"
+  | "lab-support"
+  | "field-analysis"
+  | "relay-maintenance"
+  | "artifact-catalog"
+  | "stabilize-array"
+  | "sealed-archive";
 
 export interface ContractDefinition {
   id: ContractId;
   nameKey: string;
   descriptionKey: string;
   durationMs: number;
+  requiredReputation?: number;
+  tier?: number;
+  acceptCostEssence?: number;
+  requiredEssencePerSecond?: number;
   reward: {
     essence?: number;
     research?: number;
@@ -18,6 +30,10 @@ export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
     nameKey: "contracts.starterRecon.name",
     descriptionKey: "contracts.starterRecon.description",
     durationMs: 10_000,
+    requiredReputation: 0,
+    tier: 1,
+    acceptCostEssence: 0,
+    requiredEssencePerSecond: 0,
     reward: {
       research: 2,
       essence: 15,
@@ -29,9 +45,13 @@ export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
     nameKey: "contracts.essenceDelivery.name",
     descriptionKey: "contracts.essenceDelivery.description",
     durationMs: 20_000,
+    requiredReputation: 0,
+    tier: 1,
+    acceptCostEssence: 5,
+    requiredEssencePerSecond: 0.5,
     reward: {
-      research: 4,
-      essence: 30,
+      research: 3,
+      essence: 40,
       reputation: 1
     }
   },
@@ -40,9 +60,13 @@ export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
     nameKey: "contracts.labSupport.name",
     descriptionKey: "contracts.labSupport.description",
     durationMs: 30_000,
+    requiredReputation: 0,
+    tier: 1,
+    acceptCostEssence: 8,
+    requiredEssencePerSecond: 1,
     reward: {
-      research: 8,
-      essence: 45,
+      research: 7,
+      essence: 55,
       reputation: 2
     }
   },
@@ -50,11 +74,75 @@ export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
     id: "field-analysis",
     nameKey: "contracts.fieldAnalysis.name",
     descriptionKey: "contracts.fieldAnalysis.description",
-    durationMs: 25_000,
+    durationMs: 28_000,
+    requiredReputation: 10,
+    tier: 2,
+    acceptCostEssence: 15,
+    requiredEssencePerSecond: 1.5,
+    reward: {
+      research: 16,
+      essence: 45,
+      reputation: 4
+    }
+  },
+  {
+    id: "relay-maintenance",
+    nameKey: "contracts.relayMaintenance.name",
+    descriptionKey: "contracts.relayMaintenance.description",
+    durationMs: 32_000,
+    requiredReputation: 10,
+    tier: 2,
+    acceptCostEssence: 18,
+    requiredEssencePerSecond: 1.5,
     reward: {
       research: 10,
-      essence: 60,
-      reputation: 2
+      essence: 95,
+      reputation: 3
+    }
+  },
+  {
+    id: "artifact-catalog",
+    nameKey: "contracts.artifactCatalog.name",
+    descriptionKey: "contracts.artifactCatalog.description",
+    durationMs: 36_000,
+    requiredReputation: 10,
+    tier: 2,
+    acceptCostEssence: 22,
+    requiredEssencePerSecond: 2,
+    reward: {
+      research: 18,
+      essence: 40,
+      reputation: 5
+    }
+  },
+  {
+    id: "stabilize-array",
+    nameKey: "contracts.stabilizeArray.name",
+    descriptionKey: "contracts.stabilizeArray.description",
+    durationMs: 45_000,
+    requiredReputation: 25,
+    tier: 3,
+    acceptCostEssence: 30,
+    requiredEssencePerSecond: 2.5,
+    reward: {
+      research: 20,
+      essence: 100,
+      reputation: 7
+    }
+  },
+  {
+    id: "sealed-archive",
+    nameKey: "contracts.sealedArchive.name",
+    descriptionKey: "contracts.sealedArchive.description",
+    durationMs: 55_000,
+    requiredReputation: 50,
+    tier: 4,
+    acceptCostEssence: 40,
+    requiredEssencePerSecond: 3,
+    reward: {
+      research: 28,
+      essence: 130,
+      reputation: 12
     }
   }
 ];
