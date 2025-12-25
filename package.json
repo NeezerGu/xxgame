@@ -2,6 +2,7 @@
   "name": "xxgame",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +13,10 @@
     "format": "prettier --check .",
     "build:engine": "node scripts/build.js",
     "test:engine": "node --experimental-specifier-resolution=node scripts/run-tests.js",
-    "sim": "node scripts/sim-runner.js"
+    "sim": "node scripts/sim-runner.js",
+    "electron:run": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:win:portable": "npm run build && electron-builder --win portable"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -21,6 +25,7 @@
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/node": "^22.9.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^5.1.2",
@@ -30,6 +35,27 @@
     "prettier": "^3.3.3",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "electron": "^32.2.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.neezer.xxgame",
+    "productName": "MysticWorkshopPrototype",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "asar": true
   }
 }
