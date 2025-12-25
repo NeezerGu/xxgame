@@ -10,13 +10,15 @@ import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
+import { copyText } from "./utils/clipboard";
+import { buildDiagnosticsPayload } from "./utils/diagnostics";
+import { safeReadStorage } from "./utils/storage";
+import { SAVE_KEY, TAB_STORAGE_KEY } from "./constants/storage";
 
-const SAVE_KEY = "idle-proto-save";
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
-const TAB_STORAGE_KEY = "idle-proto-tab";
 
-type TabKey = "contracts" | "upgrades" | "research" | "ascend" | "dev";
+type TabKey = "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
 
 interface LoadedState {
   state: GameState;
@@ -43,15 +45,7 @@ function loadInitialState(): LoadedState {
   return { state: createInitialState(nowMs), lastSavedAtMs: null };
 }
 
-function safeReadStorage(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-  function App() {
+function App() {
   const initial = useMemo(() => loadInitialState(), []);
   const [gameState, setGameState] = useState<GameState>(initial.state);
   const [lastSavedAtMs, setLastSavedAtMs] = useState<number | null>(initial.lastSavedAtMs);
@@ -60,13 +54,26 @@ function safeReadStorage(key: string): string | null {
   const [importError, setImportError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [locale, setLocale] = useState<Locale>(() => getDefaultLocale());
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "fail">("idle");
+  const [shouldCrash, setShouldCrash] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const saved = safeReadStorage(TAB_STORAGE_KEY);
-    if (saved === "contracts" || saved === "upgrades" || saved === "research" || saved === "ascend" || saved === "dev") {
+    if (
+      saved === "contracts" ||
+      saved === "upgrades" ||
+      saved === "research" ||
+      saved === "ascend" ||
+      saved === "dev" ||
+      saved === "help"
+    ) {
       return saved;
     }
     return "contracts";
   });
+
+  if (shouldCrash) {
+    throw new Error("Manual crash trigger");
+  }
 
   const gameStateRef = useRef(gameState);
   const lastTickRef = useRef(performance.now());
@@ -191,6 +198,37 @@ function safeReadStorage(key: string): string | null {
     setLocale(nextLocale);
     persistLocale(nextLocale);
   };
+  const buildDiagnostics = useCallback(() => {
+    const snapshot = exportText || serialize(gameStateRef.current, Date.now());
+    return buildDiagnosticsPayload({
+      locale,
+      tab: activeTab,
+      save: snapshot
+    });
+  }, [activeTab, exportText, locale]);
+
+  const handleCopyDiagnostics = useCallback(async () => {
+    const success = await copyText(buildDiagnostics());
+    setCopyStatus(success ? "success" : "fail");
+  }, [buildDiagnostics]);
+
+  const handleResetProgress = () => {
+    const confirmed = window.confirm(t("safety.resetConfirm", undefined, locale));
+    if (!confirmed) return;
+    try {
+      window.localStorage.removeItem(SAVE_KEY);
+    } catch {
+      // ignore
+    }
+    window.location.reload();
+  };
+
+  const handleTriggerCrash = () => {
+    const confirmed = window.confirm(t("dev.triggerCrashConfirm", undefined, locale));
+    if (confirmed) {
+      setShouldCrash(true);
+    }
+  };
 
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
@@ -230,6 +268,53 @@ function safeReadStorage(key: string): string | null {
   const autosaveLabel = lastSavedAtMs
     ? t("dev.autosaveWithLast", { time: new Date(lastSavedAtMs).toLocaleTimeString(locale) }, locale)
     : t("dev.autosave", undefined, locale);
+  const copyStatusLabel =
+    copyStatus === "success"
+      ? t("safety.copyOk", undefined, locale)
+      : copyStatus === "fail"
+        ? t("safety.copyFail", undefined, locale)
+        : null;
+  const quickstartSteps = useMemo(
+    () => [
+      t("help.quickstart.step1", undefined, locale),
+      t("help.quickstart.step2", undefined, locale),
+      t("help.quickstart.step3", undefined, locale),
+      t("help.quickstart.step4", undefined, locale),
+      t("help.quickstart.step5", undefined, locale)
+    ],
+    [locale]
+  );
+  const glossaryEntries = useMemo(
+    () => [
+      {
+        label: `${t("stats.essence", undefined, locale)} (E)`,
+        description: t("help.glossary.essence", undefined, locale)
+      },
+      {
+        label: `${t("stats.research", undefined, locale)} (R)`,
+        description: t("help.glossary.research", undefined, locale)
+      },
+      {
+        label: t("stats.reputation", undefined, locale),
+        description: t("help.glossary.reputation", undefined, locale)
+      },
+      {
+        label: t("stats.insight", undefined, locale),
+        description: t("help.glossary.insight", undefined, locale)
+      }
+    ],
+    [locale]
+  );
+  const faqEntries = useMemo(
+    () => [
+      t("help.faq.locked", undefined, locale),
+      t("help.faq.capacity", undefined, locale),
+      t("help.faq.cost", undefined, locale),
+      t("help.faq.eps", undefined, locale),
+      t("help.faq.startup", undefined, locale)
+    ],
+    [locale]
+  );
 
   return (
     <main className="page">
@@ -268,7 +353,8 @@ function safeReadStorage(key: string): string | null {
             { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
             { key: "research", label: t("tab.research", undefined, locale) },
             { key: "ascend", label: t("tab.ascend", undefined, locale) },
-            { key: "dev", label: t("tab.dev", undefined, locale) }
+            { key: "dev", label: t("tab.dev", undefined, locale) },
+            { key: "help", label: t("tab.help", undefined, locale) }
           ] as const
         ).map((tab) => (
           <button
@@ -607,9 +693,59 @@ function safeReadStorage(key: string): string | null {
                 {t("dev.import", undefined, locale)}
               </button>
             </div>
+            <div className="dev-controls">
+              <button className="action-button secondary" onClick={handleCopyDiagnostics}>
+                {t("safety.copyDiagnostics", undefined, locale)}
+              </button>
+              <button className="action-button secondary" onClick={handleResetProgress}>
+                {t("safety.reset", undefined, locale)}
+              </button>
+              <button className="action-button secondary" onClick={handleTriggerCrash}>
+                {t("dev.triggerCrash", undefined, locale)}
+              </button>
+            </div>
+            {copyStatusLabel ? <div className="muted small">{copyStatusLabel}</div> : null}
             {importError ? (
               <div className="error">{t("dev.importError", { message: importError }, locale)}</div>
             ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "help" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("help.title", undefined, locale)}</h2>
+              <p className="muted small">{t("help.quickstart.title", undefined, locale)}</p>
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("help.quickstart.title", undefined, locale)}</h3>
+            <ol className="help-list">
+              {quickstartSteps.map((step, index) => (
+                <li key={index}>{step}</li>
+              ))}
+            </ol>
+          </div>
+          <div className="help-section">
+            <h3>{t("help.glossary.title", undefined, locale)}</h3>
+            <div className="help-glossary">
+              {glossaryEntries.map((entry) => (
+                <div className="help-glossary-row" key={entry.label}>
+                  <div className="help-glossary-label">{entry.label}</div>
+                  <div className="muted small">{entry.description}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("help.faq.title", undefined, locale)}</h3>
+            <ul className="help-list">
+              {faqEntries.map((faq, index) => (
+                <li key={index}>{faq}</li>
+              ))}
+            </ul>
           </div>
         </section>
       ) : null}

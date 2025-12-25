@@ -1,11 +1,11 @@
 import { enUSMessages } from "./messages.en-US";
 import { zhCNMessages } from "./messages.zh-CN";
+import { LOCALE_STORAGE_KEY } from "../constants/storage";
 
 export type Locale = "zh-CN" | "en-US";
 export type MessageKey = keyof typeof zhCNMessages;
 
 const DEFAULT_LOCALE: Locale = "zh-CN";
-const LOCALE_STORAGE_KEY = "idle-proto-locale";
 
 const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
   "zh-CN": zhCNMessages,
