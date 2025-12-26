@@ -17,6 +17,7 @@ export const enUSMessages: Record<MessageKey, string> = {
   "tab.upgrades": "Upgrades",
   "tab.research": "Research",
   "tab.ascend": "Ascension",
+  "tab.help": "Help",
   "tab.dev": "Dev",
 
   "ascension.title": "Ascension Progress",
@@ -68,6 +69,8 @@ export const enUSMessages: Record<MessageKey, string> = {
   "dev.importError": "Import error: {message}",
   "dev.importErrorInvalid": "Invalid save data",
   "dev.importErrorSchemaMismatch": "Save schemaVersion mismatch",
+  "dev.triggerCrash": "Trigger crash (test)",
+  "dev.triggerCrashConfirm": "Confirm triggering a test error to view the fallback?",
 
   "locale.zh-CN": "简体中文",
   "locale.en-US": "English",
@@ -111,5 +114,33 @@ export const enUSMessages: Record<MessageKey, string> = {
   "contracts.stabilizeArray.name": "Stabilize Array",
   "contracts.stabilizeArray.description": "Tune the containment array under pressure to avoid cascade.",
   "contracts.sealedArchive.name": "Sealed Archive",
-  "contracts.sealedArchive.description": "Authenticate and decode a sealed archive while keeping it intact."
+  "contracts.sealedArchive.description": "Authenticate and decode a sealed archive while keeping it intact.",
+
+  "help.title": "Help / Quickstart",
+  "help.quickstart.title": "Quickstart in 1 minute",
+  "help.quickstart.step1": "1) Start from the Contracts tab and accept an order that matches your Reputation.",
+  "help.quickstart.step2": "2) Let the timer run (or use Focus) while keeping Essence production flowing.",
+  "help.quickstart.step3": "3) Claim the reward when the timer ends to gather Essence and Research.",
+  "help.quickstart.step4": "4) Reinvest into Upgrades and Research to raise production and capacity.",
+  "help.quickstart.step5": "5) Ascend once you meet the requirement, gain Insight, and begin a stronger run.",
+  "help.glossary.title": "Key resources",
+  "help.glossary.essence": "Core currency used to accept contracts and buy upgrades.",
+  "help.glossary.research": "Spent on research nodes to unlock lasting boosts.",
+  "help.glossary.reputation": "Defines which contract tiers are available; higher unlocks more.",
+  "help.glossary.insight": "Earned from Ascension; grants permanent production boosts.",
+  "help.faq.title": "FAQ",
+  "help.faq.locked": "Cannot accept orders: raise your Reputation to meet the contract requirement.",
+  "help.faq.capacity": "No free slots: finish current contracts before accepting new ones.",
+  "help.faq.cost": "Not enough Essence: ensure you can afford the accept cost or upgrades.",
+  "help.faq.eps": "Production too low: increase Essence/sec to match the listed requirement.",
+  "help.faq.startup": "Portable EXE starts slowly on first launch; it will speed up after initialization.",
+
+  "safety.crashTitle": "Something went wrong",
+  "safety.crashHint": "Copy diagnostics for us, or reset the save and try again.",
+  "safety.reset": "Reset save and reload",
+  "safety.resetConfirm": "Reset progress and reload? This cannot be undone.",
+  "safety.reload": "Reload only",
+  "safety.copyDiagnostics": "Copy diagnostics",
+  "safety.copyOk": "Diagnostics copied.",
+  "safety.copyFail": "Copy failed. Please try again."
 };

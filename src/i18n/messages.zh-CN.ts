@@ -13,6 +13,7 @@ export const zhCNMessages = {
   "tab.upgrades": "升级",
   "tab.research": "研究",
   "tab.ascend": "飞升",
+  "tab.help": "帮助",
   "tab.dev": "开发",
 
   "ascension.title": "飞升进度",
@@ -64,6 +65,8 @@ export const zhCNMessages = {
   "dev.importError": "导入错误：{message}",
   "dev.importErrorInvalid": "存档数据无效",
   "dev.importErrorSchemaMismatch": "存档版本不匹配",
+  "dev.triggerCrash": "模拟崩溃（测试）",
+  "dev.triggerCrashConfirm": "确认制造一个测试错误以验证兜底界面？",
 
   "locale.zh-CN": "简体中文",
   "locale.en-US": "English",
@@ -107,5 +110,33 @@ export const zhCNMessages = {
   "contracts.stabilizeArray.name": "稳态阵列",
   "contracts.stabilizeArray.description": "在压力下调校收容阵列，避免能量连锁。",
   "contracts.sealedArchive.name": "封印档案",
-  "contracts.sealedArchive.description": "鉴定并解读封印档案，确保原件完好无损。"
+  "contracts.sealedArchive.description": "鉴定并解读封印档案，确保原件完好无损。",
+
+  "help.title": "帮助 / Quickstart",
+  "help.quickstart.title": "一分钟上手",
+  "help.quickstart.step1": "1) 从契约页接单，注意声望和成本要求。",
+  "help.quickstart.step2": "2) 等待计时或使用专注加速，保持精华产出。",
+  "help.quickstart.step3": "3) 计时完成后领取奖励，收集精华与研究点。",
+  "help.quickstart.step4": "4) 用收益购买升级与研究，提升产能和栏位。",
+  "help.quickstart.step5": "5) 达到飞升条件时飞升，获取洞察并开始新轮次。",
+  "help.glossary.title": "关键资源说明",
+  "help.glossary.essence": "核心货币，用于接单和购买升级。",
+  "help.glossary.research": "购买研究节点，解锁长期增益。",
+  "help.glossary.reputation": "决定可接触的契约阶梯，越高解锁越多。",
+  "help.glossary.insight": "飞升获得，提供永久产出提升。",
+  "help.faq.title": "常见问题",
+  "help.faq.locked": "无法接单：契约未解锁时需要先提升声望到要求。",
+  "help.faq.capacity": "栏位满：等待当前契约完成后再接新单。",
+  "help.faq.cost": "精华不足：接单与升级都需要足够精华才能执行。",
+  "help.faq.eps": "产能不足：提升精华产出达到契约标示的精华/秒要求。",
+  "help.faq.startup": "便携版可执行文件首次启动会慢一些，初始化完成后会恢复正常。",
+
+  "safety.crashTitle": "出现了一些问题",
+  "safety.crashHint": "请复制诊断信息发送给我们，或重置存档后重试。",
+  "safety.reset": "清空存档并重启",
+  "safety.resetConfirm": "确认清空存档并重启？该操作不可撤销。",
+  "safety.reload": "重新加载",
+  "safety.copyDiagnostics": "复制诊断信息",
+  "safety.copyOk": "诊断信息已复制。",
+  "safety.copyFail": "复制失败，请手动尝试。"
 } as const;
