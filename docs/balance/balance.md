@@ -1,10 +1,10 @@
 # 基础平衡表
 
 ## 升级
-| ID | Cost | Effect Type | Effect |
-| --- | --- | --- | --- |
-| spark | 10 | add | +0.5/s |
-| amplify | 50 | mult | x1.5 |
+| ID | Base Cost | Cost Growth | Cost Exponent | Level0 Cost | Effect Type | Effect |
+| --- | --- | --- | --- | --- | --- | --- |
+| spark | 10 | 1.12 | 1 | 10 | add | +0.5/s |
+| amplify | 50 | 1.2 | 1 | 50 | mult | x1.5 |
 
 ## 研究
 | ID | Cost Research | Effect Type | Effect | Prerequisites |

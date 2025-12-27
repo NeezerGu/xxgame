@@ -15,7 +15,8 @@
       "id": "spark",
       "nameKey": "upgrade.spark.name",
       "descriptionKey": "upgrade.spark.description",
-      "cost": 10,
+      "baseCost": 10,
+      "costGrowth": 1.12,
       "effect": {
         "type": "add",
         "amount": 0.5
@@ -25,7 +26,8 @@
       "id": "amplify",
       "nameKey": "upgrade.amplify.name",
       "descriptionKey": "upgrade.amplify.description",
-      "cost": 50,
+      "baseCost": 50,
+      "costGrowth": 1.2,
       "effect": {
         "type": "mult",
         "factor": 1.5

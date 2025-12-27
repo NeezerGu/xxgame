@@ -5,7 +5,7 @@ import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
 import type { GameState } from "@engine/types";
-import { UPGRADE_DEFINITIONS } from "@engine/data/upgrades";
+import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
@@ -521,7 +521,8 @@ function App() {
           <div className="upgrade-list">
             {UPGRADE_DEFINITIONS.map((upgrade) => {
               const owned = gameState.upgrades[upgrade.id] ?? 0;
-              const affordable = gameState.resources.essence >= upgrade.cost;
+              const nextCost = getUpgradeCost(upgrade, owned);
+              const affordable = gameState.resources.essence >= nextCost;
               return (
                 <div className="upgrade-row" key={upgrade.id}>
                   <div>
@@ -532,7 +533,7 @@ function App() {
                     </p>
                   </div>
                   <div className="upgrade-actions">
-                    <span className="cost">{t("upgrades.cost", { cost: upgrade.cost }, locale)}</span>
+                    <span className="cost">{t("upgrades.cost", { cost: nextCost }, locale)}</span>
                     <button
                       className="action-button"
                       onClick={() => handleBuyUpgrade(upgrade.id)}
