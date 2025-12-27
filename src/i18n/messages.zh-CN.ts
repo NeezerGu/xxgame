@@ -2,6 +2,7 @@ export const zhCNMessages = {
   "app.title": "秘术工坊原型",
   "app.subtitle": "确定性放置原型脚手架。",
   "app.localeSwitch": "语言",
+  "app.versionLabel": "版本：{version}",
 
   "stats.essence": "精华",
   "stats.insight": "洞察",

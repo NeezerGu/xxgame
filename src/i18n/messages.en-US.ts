@@ -6,6 +6,7 @@ export const enUSMessages: Record<MessageKey, string> = {
   "app.title": "Arcane Workshop Prototype",
   "app.subtitle": "Deterministic idle prototype scaffold.",
   "app.localeSwitch": "Language",
+  "app.versionLabel": "Version: {version}",
 
   "stats.essence": "Essence",
   "stats.insight": "Insight",
