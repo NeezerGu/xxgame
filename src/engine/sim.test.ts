@@ -5,6 +5,7 @@ import { createInitialState, deserialize, SCHEMA_VERSION } from "./save";
 import { getContractProgress } from "./contracts";
 import { calculateProduction } from "./state";
 import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
+import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -26,17 +27,24 @@ describe("simulation determinism", () => {
 });
 
 describe("upgrades", () => {
-  it("buying an upgrade reduces essence and increases production", () => {
+  it("buying an upgrade reduces essence, increases production, and scales cost by level", () => {
     const base = createInitialState(0);
     const starting = {
       ...base,
       resources: { ...base.resources, essence: 100 }
     };
+    const def = findUpgrade("spark");
+    const firstCost = getUpgradeCost(def, 0);
+    const secondCost = getUpgradeCost(def, 1);
 
     const updated = applyAction(starting, { type: "buyUpgrade", upgradeId: "spark" });
 
-    expect(updated.resources.essence).toBeCloseTo(90);
+    expect(updated.resources.essence).toBeCloseTo(starting.resources.essence - firstCost);
     expect(updated.production.perSecond).toBeGreaterThan(starting.production.perSecond);
+
+    const second = applyAction(updated, { type: "buyUpgrade", upgradeId: "spark" });
+    expect(second.resources.essence).toBeCloseTo(updated.resources.essence - secondCost);
+    expect(secondCost).toBeGreaterThan(firstCost);
   });
 });
 

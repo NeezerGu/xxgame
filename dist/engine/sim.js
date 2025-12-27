@@ -1,7 +1,7 @@
 import { acceptContract, completeContract, progressContracts } from "./contracts";
 import { ascend } from "./progression";
 import { calculateProduction } from "./state";
-import { findUpgrade } from "./data/upgrades";
+import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -49,7 +49,7 @@ export function applyAction(state, action) {
         case "buyUpgrade": {
             const upgradeDef = findUpgrade(action.upgradeId);
             const currentLevel = state.upgrades[upgradeDef.id] ?? 0;
-            const cost = upgradeDef.cost;
+            const cost = getUpgradeCost(upgradeDef, currentLevel);
             if (state.resources.essence < cost) {
                 return state;
             }

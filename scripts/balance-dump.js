@@ -54,7 +54,7 @@ async function main() {
     INSIGHT_PROD_BONUS_PER_POINT,
     BASE_CONTRACT_SLOTS
   } = await loadModule("data/constants.js");
-  const { UPGRADE_DEFINITIONS } = await loadModule("data/upgrades.js");
+  const { UPGRADE_DEFINITIONS, getUpgradeCost } = await loadModule("data/upgrades.js");
   const { RESEARCH_DEFINITIONS } = await loadModule("data/research.js");
   const { CONTRACT_DEFINITIONS } = await loadModule("data/contracts.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
@@ -81,7 +81,15 @@ async function main() {
   const jsonPath = resolve(OUTPUT_DIR, "balance.json");
   writeFileSync(jsonPath, JSON.stringify(balanceJson, null, 2));
 
-  const upgradeRows = UPGRADE_DEFINITIONS.map((u) => [u.id, u.cost, u.effect.type, formatUpgradeEffect(u.effect)]);
+  const upgradeRows = UPGRADE_DEFINITIONS.map((u) => [
+    u.id,
+    u.baseCost,
+    u.costGrowth,
+    u.costExponent ?? 1,
+    getUpgradeCost(u, 0),
+    u.effect.type,
+    formatUpgradeEffect(u.effect)
+  ]);
   const researchRows = RESEARCH_DEFINITIONS.map((r) => [
     r.id,
     r.costResearch,
@@ -104,7 +112,10 @@ async function main() {
     "# 基础平衡表",
     "",
     "## 升级",
-    renderTable(["ID", "Cost", "Effect Type", "Effect"], upgradeRows),
+    renderTable(
+      ["ID", "Base Cost", "Cost Growth", "Cost Exponent", "Level0 Cost", "Effect Type", "Effect"],
+      upgradeRows
+    ),
     "## 研究",
     renderTable(["ID", "Cost Research", "Effect Type", "Effect", "Prerequisites"], researchRows),
     "## 契约",
