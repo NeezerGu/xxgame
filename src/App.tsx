@@ -11,7 +11,7 @@ import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
-import { buildDiagnosticsPayload } from "./utils/diagnostics";
+import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
 import { safeReadStorage } from "./utils/storage";
 import { SAVE_KEY, TAB_STORAGE_KEY } from "./constants/storage";
 
@@ -700,11 +700,14 @@ function App() {
               <button className="action-button secondary" onClick={handleResetProgress}>
                 {t("safety.reset", undefined, locale)}
               </button>
-              <button className="action-button secondary" onClick={handleTriggerCrash}>
-                {t("dev.triggerCrash", undefined, locale)}
-              </button>
+              {import.meta.env.DEV ? (
+                <button className="action-button secondary" onClick={handleTriggerCrash}>
+                  {t("dev.triggerCrash", undefined, locale)}
+                </button>
+              ) : null}
             </div>
             {copyStatusLabel ? <div className="muted small">{copyStatusLabel}</div> : null}
+            <div className="muted small">{t("app.versionLabel", { version: APP_VERSION }, locale)}</div>
             {importError ? (
               <div className="error">{t("dev.importError", { message: importError }, locale)}</div>
             ) : null}
@@ -747,6 +750,7 @@ function App() {
               ))}
             </ul>
           </div>
+          <div className="muted small">{t("app.versionLabel", { version: APP_VERSION }, locale)}</div>
         </section>
       ) : null}
     </main>
