@@ -12,6 +12,7 @@ import { canBuyResearch } from "@engine/research";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
+import { formatCompact, formatInt, formatSeconds } from "./utils/format";
 import { safeReadStorage } from "./utils/storage";
 import { SAVE_KEY, TAB_STORAGE_KEY } from "./constants/storage";
 
@@ -242,6 +243,11 @@ function App() {
   const ascendProgress = Math.min(1, gameState.resources.essence / ASCEND_THRESHOLD);
   const ascendReady = canAscend(gameState);
   const insightPreview = calculateInsightGain(gameState);
+  const formattedInsightGain = formatInt(insightPreview.gain, locale);
+  const formattedEssenceTerm = formatCompact(insightPreview.essenceTerm, { maxDecimals: 2 });
+  const formattedContractTerm = formatCompact(insightPreview.contractTerm, { maxDecimals: 2 });
+  const formattedEssenceEarned = formatCompact(gameState.runStats.essenceEarned, { maxDecimals: 2 });
+  const formattedContractsCompleted = formatInt(gameState.runStats.contractsCompleted, locale);
   const reputation = gameState.resources.reputation;
   const activeContracts = gameState.contracts.slots.filter((slot) => slot.status === "active").length;
   const unlockedContracts = CONTRACT_DEFINITIONS.filter(
@@ -260,7 +266,7 @@ function App() {
   const ascendDescription = t(
     "ascension.description",
     {
-      threshold: ASCEND_THRESHOLD.toLocaleString(locale),
+      threshold: formatCompact(ASCEND_THRESHOLD),
       progress: (ascendProgress * 100).toFixed(1)
     },
     locale
@@ -335,13 +341,25 @@ function App() {
           </div>
         </div>
         <div className="stats-grid">
-          <Stat label={t("stats.essence", undefined, locale)} value={gameState.resources.essence} />
-          <Stat label={t("stats.research", undefined, locale)} value={gameState.resources.research} />
-          <Stat label={t("stats.reputation", undefined, locale)} value={gameState.resources.reputation} />
-          <Stat label={t("stats.insight", undefined, locale)} value={gameState.resources.insight} />
+          <Stat
+            label={t("stats.essence", undefined, locale)}
+            value={formatCompact(gameState.resources.essence)}
+          />
+          <Stat
+            label={t("stats.research", undefined, locale)}
+            value={formatInt(gameState.resources.research, locale)}
+          />
+          <Stat
+            label={t("stats.reputation", undefined, locale)}
+            value={formatInt(gameState.resources.reputation, locale)}
+          />
+          <Stat
+            label={t("stats.insight", undefined, locale)}
+            value={formatInt(gameState.resources.insight, locale)}
+          />
           <Stat
             label={t("stats.essencePerSecond", undefined, locale)}
-            value={gameState.production.perSecond}
+            value={formatCompact(gameState.production.perSecond)}
           />
         </div>
       </header>
@@ -378,7 +396,11 @@ function App() {
               <div>
                 {t(
                   "contracts.reputationSummary",
-                  { reputation, unlocked: unlockedContracts, total: totalContracts },
+                  {
+                    reputation: formatInt(reputation, locale),
+                    unlocked: formatInt(unlockedContracts, locale),
+                    total: formatInt(totalContracts, locale)
+                  },
                   locale
                 )}
               </div>
@@ -386,13 +408,23 @@ function App() {
                 {nextUnlockReputation !== undefined
                   ? t(
                       "contracts.nextUnlock",
-                      { required: nextUnlockReputation, delta: Math.max(0, nextUnlockReputation - reputation) },
+                      {
+                        required: formatInt(nextUnlockReputation, locale),
+                        delta: formatInt(Math.max(0, nextUnlockReputation - reputation), locale)
+                      },
                       locale
                     )
                   : t("contracts.allUnlocked", undefined, locale)}
               </div>
               <div className="muted small">
-                {t("contracts.capacity", { active: activeContracts, max: gameState.contracts.maxSlots }, locale)}
+                {t(
+                  "contracts.capacity",
+                  {
+                    active: formatInt(activeContracts, locale),
+                    max: formatInt(gameState.contracts.maxSlots, locale)
+                  },
+                  locale
+                )}
               </div>
             </div>
             <div className="contract-list">
@@ -401,6 +433,10 @@ function App() {
                 const requiredReputation = def?.requiredReputation ?? 0;
                 const acceptCost = def?.acceptCostEssence ?? 0;
                 const requiredEssencePerSecond = def?.requiredEssencePerSecond ?? 0;
+                const formattedDuration = formatSeconds(slot.durationMs / 1000);
+                const formattedAcceptCost = formatInt(acceptCost, locale);
+                const formattedRequiredEps = formatCompact(requiredEssencePerSecond, { maxDecimals: 1 });
+                const formattedRequiredReputation = formatInt(requiredReputation, locale);
                 const isUnlocked = reputation >= requiredReputation;
                 const progress = getContractProgress(slot);
                 const isActive = slot.status === "active";
@@ -409,13 +445,17 @@ function App() {
                 const hasEssenceForCost = gameState.resources.essence >= acceptCost;
                 const meetsEssenceRate = gameState.production.perSecond >= requiredEssencePerSecond;
                 const disabledReason = !isUnlocked
-                  ? t("contracts.requireReputation", { required: requiredReputation }, locale)
+                  ? t("contracts.requireReputation", { required: formattedRequiredReputation }, locale)
                   : !hasCapacity
-                    ? t("contracts.reason.capacity", { max: gameState.contracts.maxSlots }, locale)
+                    ? t(
+                        "contracts.reason.capacity",
+                        { max: formatInt(gameState.contracts.maxSlots, locale) },
+                        locale
+                      )
                     : !hasEssenceForCost
-                      ? t("contracts.reason.cost", { cost: acceptCost }, locale)
+                      ? t("contracts.reason.cost", { cost: formattedAcceptCost }, locale)
                       : !meetsEssenceRate
-                        ? t("contracts.reason.eps", { eps: requiredEssencePerSecond }, locale)
+                        ? t("contracts.reason.eps", { eps: formattedRequiredEps }, locale)
                         : undefined;
                 return (
                   <div className="contract-row" key={slot.id}>
@@ -431,24 +471,24 @@ function App() {
                         {t(
                           "contracts.duration",
                           {
-                            seconds: Math.round(slot.durationMs / 1000)
+                            seconds: formattedDuration
                           },
                           locale
                         )}
                       </div>
                       {acceptCost > 0 ? (
                         <div className="muted small">
-                          {t("contracts.acceptCost", { cost: acceptCost }, locale)}
+                          {t("contracts.acceptCost", { cost: formattedAcceptCost }, locale)}
                         </div>
                       ) : null}
                       {requiredEssencePerSecond > 0 ? (
                         <div className="muted small">
-                          {t("contracts.requiredEps", { eps: requiredEssencePerSecond }, locale)}
+                          {t("contracts.requiredEps", { eps: formattedRequiredEps }, locale)}
                         </div>
                       ) : null}
                       {!isUnlocked ? (
                         <div className="muted small warning">
-                          {t("contracts.requireReputation", { required: requiredReputation }, locale)}
+                          {t("contracts.requireReputation", { required: formattedRequiredReputation }, locale)}
                         </div>
                       ) : null}
                       {isActive ? (
@@ -460,13 +500,22 @@ function App() {
                     <div className="contract-actions">
                       <div className="reward-row">
                         {slot.reward.essence ? (
-                          <RewardBadge label={t("stats.essence", undefined, locale)} amount={slot.reward.essence} />
+                          <RewardBadge
+                            label={t("stats.essence", undefined, locale)}
+                            amount={formatCompact(slot.reward.essence)}
+                          />
                         ) : null}
                         {slot.reward.research ? (
-                          <RewardBadge label={t("stats.research", undefined, locale)} amount={slot.reward.research} />
+                          <RewardBadge
+                            label={t("stats.research", undefined, locale)}
+                            amount={formatInt(slot.reward.research, locale)}
+                          />
                         ) : null}
                         {slot.reward.reputation ? (
-                          <RewardBadge label={t("stats.reputation", undefined, locale)} amount={slot.reward.reputation} />
+                          <RewardBadge
+                            label={t("stats.reputation", undefined, locale)}
+                            amount={formatInt(slot.reward.reputation, locale)}
+                          />
                         ) : null}
                       </div>
                       {isCompleted ? (
@@ -529,11 +578,11 @@ function App() {
                     <strong>{t(upgrade.nameKey as MessageKey, undefined, locale)}</strong>
                     <p className="muted">
                       {t(upgrade.descriptionKey as MessageKey, undefined, locale)} •{" "}
-                      {t("upgrades.owned", { count: owned }, locale)}
+                      {t("upgrades.owned", { count: formatInt(owned, locale) }, locale)}
                     </p>
                   </div>
                   <div className="upgrade-actions">
-                    <span className="cost">{t("upgrades.cost", { cost: nextCost }, locale)}</span>
+                    <span className="cost">{t("upgrades.cost", { cost: formatInt(nextCost, locale) }, locale)}</span>
                     <button
                       className="action-button"
                       onClick={() => handleBuyUpgrade(upgrade.id)}
@@ -557,7 +606,7 @@ function App() {
               <p className="muted small">{t("research.hint", undefined, locale)}</p>
             </div>
             <div className="cost">
-              {t("research.balance", { amount: gameState.resources.research.toFixed(2) }, locale)}
+              {t("research.balance", { amount: formatInt(gameState.resources.research, locale) }, locale)}
             </div>
           </div>
           <div className="upgrade-list">
@@ -584,7 +633,7 @@ function App() {
                   </div>
                   <div className="upgrade-actions">
                     <span className="cost">
-                      {t("research.cost", { cost: node.costResearch }, locale)}
+                      {t("research.cost", { cost: formatInt(node.costResearch, locale) }, locale)}
                     </span>
                     <button
                       className="action-button"
@@ -626,15 +675,15 @@ function App() {
             <strong>{t("ascension.previewTitle", undefined, locale)}</strong>
           </div>
           <div className="muted" style={{ marginTop: "4px" }}>
-            {t("ascension.previewGain", { amount: insightPreview.gain }, locale)}
+            {t("ascension.previewGain", { amount: formattedInsightGain }, locale)}
             {!ascendReady ? ` • ${t("ascension.previewNotReady", undefined, locale)}` : null}
           </div>
           <div className="muted small" style={{ marginTop: "4px" }}>
             {t(
               "ascension.previewBreakdown",
               {
-                essence: insightPreview.essenceTerm.toFixed(2),
-                contracts: insightPreview.contractTerm.toFixed(2)
+                essence: formattedEssenceTerm,
+                contracts: formattedContractTerm
               },
               locale
             )}
@@ -643,8 +692,8 @@ function App() {
             {t(
               "ascension.previewRunStats",
               {
-                essence: gameState.runStats.essenceEarned.toFixed(2),
-                contracts: gameState.runStats.contractsCompleted
+                essence: formattedEssenceEarned,
+                contracts: formattedContractsCompleted
               },
               locale
             )}
@@ -758,16 +807,16 @@ function App() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="stat">
       <div className="stat-label">{label}</div>
-      <div className="stat-value">{value.toFixed(2)}</div>
+      <div className="stat-value">{value}</div>
     </div>
   );
 }
 
-function RewardBadge({ label, amount }: { label: string; amount: number }) {
+function RewardBadge({ label, amount }: { label: string; amount: string }) {
   return (
     <span className="reward-badge">
       {label}: {amount}
