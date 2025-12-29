@@ -14,12 +14,19 @@ import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
 import { formatCompact, formatInt, formatSeconds } from "./utils/format";
 import { safeReadStorage } from "./utils/storage";
-import { SAVE_KEY, TAB_STORAGE_KEY } from "./constants/storage";
+import { computeContractScore, DEFAULT_CONTRACT_WEIGHTS } from "./utils/contractScore";
+import {
+  CONTRACT_HIDE_STORAGE_KEY,
+  CONTRACT_SORT_STORAGE_KEY,
+  SAVE_KEY,
+  TAB_STORAGE_KEY
+} from "./constants/storage";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
 
 type TabKey = "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
+type ContractSortMode = "default" | "score";
 
 interface LoadedState {
   state: GameState;
@@ -71,6 +78,14 @@ function App() {
     }
     return "contracts";
   });
+  const [contractSortMode, setContractSortMode] = useState<ContractSortMode>(() => {
+    const saved = safeReadStorage(CONTRACT_SORT_STORAGE_KEY);
+    return saved === "score" ? "score" : "default";
+  });
+  const [hideUnavailableContracts, setHideUnavailableContracts] = useState<boolean>(() => {
+    const saved = safeReadStorage(CONTRACT_HIDE_STORAGE_KEY);
+    return saved === "true";
+  });
 
   if (shouldCrash) {
     throw new Error("Manual crash trigger");
@@ -88,6 +103,22 @@ function App() {
     document.documentElement.lang = locale;
     document.title = t("app.title", undefined, locale);
   }, [locale]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CONTRACT_SORT_STORAGE_KEY, contractSortMode);
+    } catch {
+      // ignore
+    }
+  }, [contractSortMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CONTRACT_HIDE_STORAGE_KEY, hideUnavailableContracts ? "true" : "false");
+    } catch {
+      // ignore
+    }
+  }, [hideUnavailableContracts]);
 
   useEffect(() => {
     const tickInterval = setInterval(() => {
@@ -311,6 +342,90 @@ function App() {
     ],
     [locale]
   );
+  const contractEntries = useMemo(
+    () =>
+      gameState.contracts.slots.map((slot, index) => {
+        const def = CONTRACT_DEFINITIONS.find((item) => item.id === slot.id);
+        const requiredReputation = def?.requiredReputation ?? 0;
+        const acceptCost = def?.acceptCostEssence ?? 0;
+        const requiredEssencePerSecond = def?.requiredEssencePerSecond ?? 0;
+        const isUnlocked = reputation >= requiredReputation;
+        const isActive = slot.status === "active";
+        const isCompleted = slot.status === "completed";
+        const hasCapacity = activeContracts < gameState.contracts.maxSlots || isActive || isCompleted;
+        const hasEssenceForCost = gameState.resources.essence >= acceptCost;
+        const meetsEssenceRate = gameState.production.perSecond >= requiredEssencePerSecond;
+        const available =
+          slot.status === "idle" && isUnlocked && hasCapacity && hasEssenceForCost && meetsEssenceRate;
+        const score = computeContractScore({
+          rewardResearch: slot.reward.research,
+          rewardReputation: slot.reward.reputation,
+          rewardEssence: slot.reward.essence,
+          acceptCostEssence: acceptCost,
+          durationMs: slot.durationMs,
+          weights: DEFAULT_CONTRACT_WEIGHTS
+        });
+
+        return {
+          slot,
+          requiredReputation,
+          acceptCost,
+          requiredEssencePerSecond,
+          isUnlocked,
+          isActive,
+          isCompleted,
+          hasCapacity,
+          hasEssenceForCost,
+          meetsEssenceRate,
+          available,
+          score,
+          originalIndex: index
+        };
+      }),
+    [
+      activeContracts,
+      gameState.contracts.maxSlots,
+      gameState.contracts.slots,
+      gameState.production.perSecond,
+      gameState.resources.essence,
+      reputation
+    ]
+  );
+  const filteredContracts = useMemo(() => {
+    const base = contractEntries.filter((entry) => {
+      if (!hideUnavailableContracts) return true;
+      if (entry.slot.status !== "idle") return true;
+      return entry.available;
+    });
+
+    if (contractSortMode !== "score") {
+      return base;
+    }
+
+    const activeOrCompleted = base.filter((entry) => entry.slot.status !== "idle");
+    const idle = base.filter((entry) => entry.slot.status === "idle");
+    const sortedIdle = idle
+      .slice()
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.slot.id.localeCompare(b.slot.id);
+      });
+
+    return [...activeOrCompleted, ...sortedIdle];
+  }, [contractEntries, contractSortMode, hideUnavailableContracts]);
+  const recommendedContractId = useMemo(() => {
+    const candidates = filteredContracts.filter(
+      (entry) => entry.slot.status === "idle" && entry.available
+    );
+    if (candidates.length === 0) return null;
+    const sorted = candidates
+      .slice()
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.slot.id.localeCompare(b.slot.id);
+      });
+    return sorted[0].slot.id;
+  }, [filteredContracts]);
   const faqEntries = useMemo(
     () => [
       t("help.faq.locked", undefined, locale),
@@ -427,41 +542,59 @@ function App() {
                 )}
               </div>
             </div>
+            <div className="reputation-summary">
+              <label className="muted small">
+                {t("contracts.sortLabel", undefined, locale)}
+                <select
+                  value={contractSortMode}
+                  onChange={(event) => setContractSortMode(event.target.value as ContractSortMode)}
+                  style={{ marginLeft: "8px" }}
+                >
+                  <option value="default">{t("contracts.sort.default", undefined, locale)}</option>
+                  <option value="score">{t("contracts.sort.score", undefined, locale)}</option>
+                </select>
+              </label>
+              <label className="muted small" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <input
+                  type="checkbox"
+                  checked={hideUnavailableContracts}
+                  onChange={(event) => setHideUnavailableContracts(event.target.checked)}
+                />
+                {t("contracts.hideUnavailable", undefined, locale)}
+              </label>
+            </div>
             <div className="contract-list">
-              {gameState.contracts.slots.map((slot) => {
-                const def = CONTRACT_DEFINITIONS.find((item) => item.id === slot.id);
-                const requiredReputation = def?.requiredReputation ?? 0;
-                const acceptCost = def?.acceptCostEssence ?? 0;
-                const requiredEssencePerSecond = def?.requiredEssencePerSecond ?? 0;
+              {filteredContracts.map((entry) => {
+                const { slot } = entry;
                 const formattedDuration = formatSeconds(slot.durationMs / 1000);
-                const formattedAcceptCost = formatInt(acceptCost, locale);
-                const formattedRequiredEps = formatCompact(requiredEssencePerSecond, { maxDecimals: 1 });
-                const formattedRequiredReputation = formatInt(requiredReputation, locale);
-                const isUnlocked = reputation >= requiredReputation;
+                const formattedAcceptCost = formatInt(entry.acceptCost, locale);
+                const formattedRequiredEps = formatCompact(entry.requiredEssencePerSecond, { maxDecimals: 1 });
+                const formattedRequiredReputation = formatInt(entry.requiredReputation, locale);
                 const progress = getContractProgress(slot);
-                const isActive = slot.status === "active";
-                const isCompleted = slot.status === "completed";
-                const hasCapacity = activeContracts < gameState.contracts.maxSlots || isActive || isCompleted;
-                const hasEssenceForCost = gameState.resources.essence >= acceptCost;
-                const meetsEssenceRate = gameState.production.perSecond >= requiredEssencePerSecond;
-                const disabledReason = !isUnlocked
+                const disabledReason = !entry.isUnlocked
                   ? t("contracts.requireReputation", { required: formattedRequiredReputation }, locale)
-                  : !hasCapacity
-                    ? t(
-                        "contracts.reason.capacity",
-                        { max: formatInt(gameState.contracts.maxSlots, locale) },
-                        locale
-                      )
-                    : !hasEssenceForCost
+                  : !entry.hasCapacity
+                    ? t("contracts.reason.capacity", { max: formatInt(gameState.contracts.maxSlots, locale) }, locale)
+                    : !entry.hasEssenceForCost
                       ? t("contracts.reason.cost", { cost: formattedAcceptCost }, locale)
-                      : !meetsEssenceRate
+                      : !entry.meetsEssenceRate
                         ? t("contracts.reason.eps", { eps: formattedRequiredEps }, locale)
                         : undefined;
+                const scoreLabel = t(
+                  "contracts.scoreLabel" as MessageKey,
+                  { score: formatCompact(entry.score, { maxDecimals: 2 }) },
+                  locale
+                );
                 return (
                   <div className="contract-row" key={slot.id}>
                     <div className="contract-info">
                       <div className="contract-title">
                         <strong>{t(slot.nameKey as MessageKey, undefined, locale)}</strong>
+                        {entry.available && slot.status === "idle" && recommendedContractId === slot.id ? (
+                          <span className="status-pill status-active">
+                            {t("contracts.recommended", undefined, locale)}
+                          </span>
+                        ) : null}
                         <span className={`status-pill status-${slot.status}`}>
                           {t(`contracts.status.${slot.status}` as MessageKey, undefined, locale)}
                         </span>
@@ -476,22 +609,23 @@ function App() {
                           locale
                         )}
                       </div>
-                      {acceptCost > 0 ? (
+                      <div className="muted small">{scoreLabel}</div>
+                      {entry.acceptCost > 0 ? (
                         <div className="muted small">
                           {t("contracts.acceptCost", { cost: formattedAcceptCost }, locale)}
                         </div>
                       ) : null}
-                      {requiredEssencePerSecond > 0 ? (
+                      {entry.requiredEssencePerSecond > 0 ? (
                         <div className="muted small">
                           {t("contracts.requiredEps", { eps: formattedRequiredEps }, locale)}
                         </div>
                       ) : null}
-                      {!isUnlocked ? (
+                      {!entry.isUnlocked ? (
                         <div className="muted small warning">
                           {t("contracts.requireReputation", { required: formattedRequiredReputation }, locale)}
                         </div>
                       ) : null}
-                      {isActive ? (
+                      {entry.isActive ? (
                         <div className="progress-bar contract-progress">
                           <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
                         </div>
@@ -518,7 +652,7 @@ function App() {
                           />
                         ) : null}
                       </div>
-                      {isCompleted ? (
+                      {entry.isCompleted ? (
                         <button
                           className="action-button"
                           onClick={() => setGameState((prev) => applyAction(prev, { type: "completeContract", contractId: slot.id }))}
@@ -528,10 +662,16 @@ function App() {
                       ) : (
                         <button
                           className="action-button secondary"
-                          disabled={isActive || !isUnlocked || !hasCapacity || !hasEssenceForCost || !meetsEssenceRate}
+                          disabled={
+                            entry.isActive ||
+                            !entry.isUnlocked ||
+                            !entry.hasCapacity ||
+                            !entry.hasEssenceForCost ||
+                            !entry.meetsEssenceRate
+                          }
                           onClick={() => setGameState((prev) => applyAction(prev, { type: "acceptContract", contractId: slot.id }))}
                         >
-                          {isUnlocked
+                          {entry.isUnlocked
                             ? t("contracts.accept", undefined, locale)
                             : t("contracts.locked", undefined, locale)}
                         </button>
