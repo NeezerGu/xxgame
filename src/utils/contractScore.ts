@@ -27,14 +27,14 @@ export function computeContractScore({
   durationMs,
   weights = DEFAULT_CONTRACT_WEIGHTS
 }: ComputeContractScoreParams): number {
-  const durationSec = durationMs / 1000;
+  const durationSec = Math.max(1, durationMs / 1000);
   const netEssence = (rewardEssence ?? 0) - (acceptCostEssence ?? 0);
 
   const score =
     (weights.research * (rewardResearch ?? 0) +
       weights.reputation * (rewardReputation ?? 0) +
       weights.essence * netEssence) /
-    Math.max(1, durationSec);
+    durationSec;
 
   return score;
 }
