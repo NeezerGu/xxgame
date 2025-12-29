@@ -7,6 +7,7 @@ import { applyResearchPurchase, getResearchModifiers } from "./research";
 import { breakthrough } from "./progressionRealm";
 import { addResources, getResource } from "./resources";
 import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
+import { disassembleItem, progressForging, startForging } from "./forging";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -16,19 +17,21 @@ export function tick(state: GameState, dtMs: number): GameState {
     return state;
   }
 
-  const perSecond = state.production.perSecond;
+  const progressed = progressForging(state, dtMs);
+
+  const perSecond = progressed.production.perSecond;
   const deltaSeconds = dtMs / 1000;
   const deltaEssence = perSecond * deltaSeconds;
-  const nextResources = addResources(state.resources, { essence: deltaEssence });
-  const researchModifiers = getResearchModifiers(state);
-  const equipmentModifiers = getEquipmentModifiers(state);
+  const nextResources = addResources(progressed.resources, { essence: deltaEssence });
+  const researchModifiers = getResearchModifiers(progressed);
+  const equipmentModifiers = getEquipmentModifiers(progressed);
 
   const withResources: GameState = {
-    ...state,
+    ...progressed,
     resources: nextResources,
     runStats: {
-      ...state.runStats,
-      essenceEarned: state.runStats.essenceEarned + deltaEssence
+      ...progressed.runStats,
+      essenceEarned: progressed.runStats.essenceEarned + deltaEssence
     }
   };
 
@@ -91,6 +94,13 @@ export function applyAction(state: GameState, action: Action): GameState {
     case "buyResearch": {
       const updated = applyResearchPurchase(state, action.researchId);
       return calculateProduction(updated);
+    }
+    case "startForge": {
+      const updated = startForging(state, action.blueprintId);
+      return updated;
+    }
+    case "disassemble": {
+      return disassembleItem(state, action.instanceId);
     }
     case "equip": {
       const updated = equipItem(state, action.instanceId);

@@ -402,4 +402,21 @@ describe("save migration", () => {
     expect(migrated.state.resources.ore).toBe(0);
     expect(migrated.state.resources.essence).toBe(20);
   });
+
+  it("hydrates forging queue when migrating legacy saves", () => {
+    const legacy = {
+      schemaVersion: 7,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 7
+      }
+    };
+    // @ts-expect-error simulate legacy save without forgingQueue
+    delete legacy.state.forgingQueue;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.state.forgingQueue.active).toBeNull();
+    expect(migrated.state.forgingQueue.lastFinished).toBeNull();
+  });
 });

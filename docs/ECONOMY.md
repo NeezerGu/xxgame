@@ -10,13 +10,18 @@
 - 当前实现：`cost = baseCost × growth^level`（向下取整，level 从 0 开始）。
 - 契约接单成本（可选）：固定费用或按声望阶梯增长，防止无限刷新。
 - 研究成本：以 Research 点或 Insight 支付，使用阶梯指数 `cost0 × r^(tier)`；跨分支成本区分，避免单一路径压制。
-- 装备：蓝图与词缀定义位于 `src/engine/data/equipment.ts`，实例化后存入背包，稀有度对基础共振与词缀数值做乘区放大。
+- 装备：蓝图与词缀定义位于 `src/engine/data/equipment.ts`，实例化后存入背包，稀有度对基础共振与词缀数值做乘区放大。锻造成本为精华+灵矿，当前蓝图耗时在 15-25s 区间。
 
 ## 契约奖励与评分
 - 奖励模板：`rewardE = baseE × (1 + repTier)`，`rewardR = baseR × speedFactor`；Insight 仅在高阶契约或 Ascend 结算时给出。
 - 评分/Reputation：`repGain = baseRep × (qualityMultiplier)`；失败可减小或清零，不造成硬性惩罚。
 - 时长与约束：`duration = baseDuration / (1 + speedBonuses)`；研究乘区可直接影响计时（如 +25% 速度），并可解锁额外槽位。
 - 声望阶梯（示例门槛）：0 声望提供基础勘察/配送/支援单，10 声望解锁更快收益的中阶单，25/50 声望解锁高阶稳态与封印档案等高回报单。
+
+## 锻造与分解
+- 稀有度权重：common/uncommon/rare/epic = 70%/20%/9%/1%，由 seed 驱动的 RNG 决定，保证同 seed 可复现。
+- 词缀数量：随稀有度递增（当前 1/2/3/4），词缀类型从定义列表中无放回抽取，数值在 min/max 间线性插值。
+- 分解返还：按稀有度倍率返还蓝图 Ore 成本（示例 0.35/0.5/0.8/1），仅返还灵矿以避免 Essence 通胀。
 
 ## 研究节点示例（v0）
 - Contract Speed：成本 6 R，契约计时 ×1.25。

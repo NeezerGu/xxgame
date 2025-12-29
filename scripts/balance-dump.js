@@ -57,7 +57,13 @@ async function main() {
   const { UPGRADE_DEFINITIONS, getUpgradeCost } = await loadModule("data/upgrades.js");
   const { RESEARCH_DEFINITIONS } = await loadModule("data/research.js");
   const { CONTRACT_DEFINITIONS } = await loadModule("data/contracts.js");
-  const { EQUIPMENT_BLUEPRINTS, AFFIX_DEFINITIONS } = await loadModule("data/equipment.js");
+  const {
+    EQUIPMENT_BLUEPRINTS,
+    AFFIX_DEFINITIONS,
+    FORGING_RARITY_WEIGHTS,
+    FORGING_AFFIX_COUNT,
+    DISASSEMBLE_REFUND_MULTIPLIER
+  } = await loadModule("data/equipment.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
   const { RESOURCE_IDS } = await loadModule("resources.js");
@@ -78,7 +84,10 @@ async function main() {
     research: RESEARCH_DEFINITIONS,
     contracts: CONTRACT_DEFINITIONS,
     equipmentBlueprints: EQUIPMENT_BLUEPRINTS,
-    equipmentAffixes: AFFIX_DEFINITIONS
+    equipmentAffixes: AFFIX_DEFINITIONS,
+    forgingRarityWeights: FORGING_RARITY_WEIGHTS,
+    forgingAffixCount: FORGING_AFFIX_COUNT,
+    disassembleRefundMultiplier: DISASSEMBLE_REFUND_MULTIPLIER
   };
 
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -105,6 +114,9 @@ async function main() {
     b.id,
     b.slot,
     b.basePower,
+    b.forgeTimeMs,
+    b.cost.essence,
+    b.cost.ore,
     b.nameKey,
     b.descriptionKey
   ]);
@@ -114,6 +126,12 @@ async function main() {
     a.type,
     a.min,
     a.max
+  ]);
+  const rarityRows = Object.entries(FORGING_RARITY_WEIGHTS).map(([rarity, weight]) => [rarity, weight]);
+  const affixCountRows = Object.entries(FORGING_AFFIX_COUNT).map(([rarity, count]) => [rarity, count]);
+  const disassembleRows = Object.entries(DISASSEMBLE_REFUND_MULTIPLIER).map(([rarity, multiplier]) => [
+    rarity,
+    multiplier
   ]);
   const contractRows = CONTRACT_DEFINITIONS.map((c) => [
     c.id,
@@ -140,9 +158,18 @@ async function main() {
       contractRows
     ),
     "## 装备蓝图",
-    renderTable(["ID", "Slot", "Base Power", "Name Key", "Description Key"], equipmentBlueprintRows),
+    renderTable(
+      ["ID", "Slot", "Base Power", "Forge Time(ms)", "Cost Essence", "Cost Ore", "Name Key", "Description Key"],
+      equipmentBlueprintRows
+    ),
     "## 装备词缀",
     renderTable(["ID", "Name Key", "Type", "Min", "Max"], equipmentAffixRows),
+    "## 稀有度权重",
+    renderTable(["Rarity", "Weight"], rarityRows),
+    "## 词缀条目数",
+    renderTable(["Rarity", "Affix Count"], affixCountRows),
+    "## 分解返还倍率（基于蓝图 Ore 成本）",
+    renderTable(["Rarity", "Refund Multiplier"], disassembleRows),
     "## 关键常量",
     renderTable(["Key", "Value"], constantsRows)
   ];

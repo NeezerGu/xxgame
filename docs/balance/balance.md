@@ -28,12 +28,12 @@
 | ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
 ## 装备蓝图
-| ID | Slot | Base Power | Name Key | Description Key |
-| --- | --- | --- | --- | --- |
-| ember-shiv | weapon | 0.05 | equipment.blueprint.emberShiv.name | equipment.blueprint.emberShiv.description |
-| woven-ward | armor | 0.04 | equipment.blueprint.wovenWard.name | equipment.blueprint.wovenWard.description |
-| circuit-band | ring | 0.03 | equipment.blueprint.circuitBand.name | equipment.blueprint.circuitBand.description |
-| glyph-charm | amulet | 0.025 | equipment.blueprint.glyphCharm.name | equipment.blueprint.glyphCharm.description |
+| ID | Slot | Base Power | Forge Time(ms) | Cost Essence | Cost Ore | Name Key | Description Key |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ember-shiv | weapon | 0.05 | 20000 | 30 | 12 | equipment.blueprint.emberShiv.name | equipment.blueprint.emberShiv.description |
+| woven-ward | armor | 0.04 | 25000 | 35 | 14 | equipment.blueprint.wovenWard.name | equipment.blueprint.wovenWard.description |
+| circuit-band | ring | 0.03 | 15000 | 25 | 10 | equipment.blueprint.circuitBand.name | equipment.blueprint.circuitBand.description |
+| glyph-charm | amulet | 0.025 | 18000 | 28 | 11 | equipment.blueprint.glyphCharm.name | equipment.blueprint.glyphCharm.description |
 
 ## 装备词缀
 | ID | Name Key | Type | Min | Max |
@@ -44,6 +44,30 @@
 | focused-channels | equipment.affix.focusedChannels.name | productionMult | 0.06 | 0.1 |
 | rapid-binding | equipment.affix.rapidBinding.name | contractSpeedMult | 0.05 | 0.1 |
 | anchored-focus | equipment.affix.anchoredFocus.name | offlineCapBonus | 600000 | 1500000 |
+
+## 稀有度权重
+| Rarity | Weight |
+| --- | --- |
+| common | 0.7 |
+| uncommon | 0.2 |
+| rare | 0.09 |
+| epic | 0.01 |
+
+## 词缀条目数
+| Rarity | Affix Count |
+| --- | --- |
+| common | 1 |
+| uncommon | 2 |
+| rare | 3 |
+| epic | 4 |
+
+## 分解返还倍率（基于蓝图 Ore 成本）
+| Rarity | Refund Multiplier |
+| --- | --- |
+| common | 0.35 |
+| uncommon | 0.5 |
+| rare | 0.8 |
+| epic | 1 |
 
 ## 关键常量
 | Key | Value |

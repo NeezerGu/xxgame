@@ -4,6 +4,7 @@ import { applyAction, tick } from "./sim";
 import { getEquipmentModifiers } from "./equipment";
 import { calculateProduction } from "./state";
 import { computeOfflineProgress } from "./offline";
+import { findEquipmentBlueprint } from "./data/equipment";
 
 describe("equipment system", () => {
   it("equipping the starter item boosts production", () => {
@@ -66,5 +67,48 @@ describe("equipment system", () => {
     const nineHours = 9 * 60 * 60 * 1000;
     const { appliedMs } = computeOfflineProgress(withCap, 0, nineHours);
     expect(appliedMs).toBeGreaterThan(8 * 60 * 60 * 1000);
+  });
+
+  it("forging produces deterministic items based on seed", () => {
+    const blueprintId = "ember-shiv";
+    const duration = findEquipmentBlueprint(blueprintId).forgeTimeMs;
+    const firstRun = {
+      ...createInitialState(0),
+      seed: 123,
+      resources: { ...createInitialState(0).resources, essence: 100, ore: 100 }
+    };
+    const started = applyAction(firstRun, { type: "startForge", blueprintId });
+    const progressed = tick(started, duration);
+    const crafted = progressed.forgingQueue.lastFinished!;
+
+    const secondRun = {
+      ...createInitialState(0),
+      seed: 123,
+      resources: { ...createInitialState(0).resources, essence: 100, ore: 100 }
+    };
+    const startedB = applyAction(secondRun, { type: "startForge", blueprintId });
+    const progressedB = tick(startedB, duration);
+    const craftedB = progressedB.forgingQueue.lastFinished!;
+
+    expect(crafted.rarity).toBe(craftedB.rarity);
+    expect(crafted.affixes.length).toBe(craftedB.affixes.length);
+    crafted.affixes.forEach((affix, index) => {
+      expect(affix.affixId).toBe(craftedB.affixes[index].affixId);
+      expect(affix.value).toBeCloseTo(craftedB.affixes[index].value);
+    });
+  });
+
+  it("disassembling removes items, clears equips, and refunds ore", () => {
+    const base = createInitialState(0);
+    const withResources = {
+      ...base,
+      resources: { ...base.resources, ore: 0 }
+    };
+    const equipped = applyAction(withResources, { type: "equip", instanceId: "1" });
+    const disassembled = applyAction(equipped, { type: "disassemble", instanceId: "1" });
+
+    expect(disassembled.equipmentInventory.items["1"]).toBeUndefined();
+    expect(disassembled.equipped.weapon).toBeNull();
+    expect(disassembled.resources.ore).toBeGreaterThan(withResources.resources.ore);
   });
 });

@@ -75,6 +75,19 @@ export interface EquipmentInventoryState {
 
 export type EquippedState = Record<EquipmentSlot, string | null>;
 
+export interface ForgingTask {
+  blueprintId: EquipmentBlueprintId;
+  remainingMs: number;
+  totalMs: number;
+  rarity: EquipmentRarity;
+  affixes: EquipmentAffixInstance[];
+}
+
+export interface ForgingQueueState {
+  active: ForgingTask | null;
+  lastFinished?: EquipmentInstance | null;
+}
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
@@ -88,6 +101,7 @@ export interface GameState {
   contracts: ContractsState;
   equipmentInventory: EquipmentInventoryState;
   equipped: EquippedState;
+  forgingQueue: ForgingQueueState;
 }
 
 export type Action =
@@ -99,4 +113,6 @@ export type Action =
   | { type: "buyResearch"; researchId: ResearchId }
   | { type: "breakthrough" }
   | { type: "equip"; instanceId: string }
-  | { type: "unequip"; slot: EquipmentSlot };
+  | { type: "unequip"; slot: EquipmentSlot }
+  | { type: "startForge"; blueprintId: EquipmentBlueprintId }
+  | { type: "disassemble"; instanceId: string };

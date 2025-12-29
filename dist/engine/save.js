@@ -1,13 +1,14 @@
 import { createInitialContractsState, ensureContractSlotCount } from "./contracts";
 import { FOCUS_COOLDOWN_MS } from "./sim";
 import { calculateProduction } from "./state";
-import { initializeUpgradesRecord } from "./utils";
+import { initializeUpgradesRecord } from "./utils.js";
 import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { createEmptyResources } from "./resources";
 import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefaults } from "./equipment";
-export const SCHEMA_VERSION = 7;
+import { createEmptyForgingQueue } from "./forging";
+export const SCHEMA_VERSION = 8;
 function normalizeResources(resources) {
     return createEmptyResources(resources ?? {});
 }
@@ -47,7 +48,8 @@ export function createInitialState(nowMs) {
             items: { "1": starterEquipment },
             nextId: 2
         },
-        equipped: createEmptyEquipped()
+        equipped: createEmptyEquipped(),
+        forgingQueue: createEmptyForgingQueue()
     };
     return calculateProduction(base);
 }
@@ -71,6 +73,17 @@ export function migrateToLatest(save) {
         };
     }
     if (save.schemaVersion === 6) {
+        const migratedState = {
+            ...save.state,
+            schemaVersion: SCHEMA_VERSION
+        };
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            savedAtMs: save.savedAtMs ?? Date.now(),
+            state: applyStateDefaults(migratedState)
+        };
+    }
+    if (save.schemaVersion === 7) {
         const migratedState = {
             ...save.state,
             schemaVersion: SCHEMA_VERSION
@@ -146,7 +159,8 @@ export function migrateToLatest(save) {
             lastFocusAtMs: save.state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
             contracts: createInitialContractsState(),
             equipmentInventory: createEmptyEquipmentInventory(),
-            equipped: createEmptyEquipped()
+            equipped: createEmptyEquipped(),
+            forgingQueue: createEmptyForgingQueue()
         };
         return {
             schemaVersion: SCHEMA_VERSION,
@@ -167,6 +181,7 @@ export function migrateToLatest(save) {
 function applyStateDefaults(state) {
     const withEquipment = ensureEquipmentDefaults(state);
     const withStarterEquipment = seedStarterEquipment(withEquipment);
+    const forgingQueue = withStarterEquipment.forgingQueue ?? createEmptyForgingQueue();
     const research = applyResearchDefaults(withStarterEquipment.research);
     const realm = buildRealmState(withStarterEquipment.realm?.current ?? getInitialRealmId(), withStarterEquipment.realm);
     const withResources = {
@@ -195,7 +210,8 @@ function applyStateDefaults(state) {
             additiveBonus: 0,
             multiplier: 1,
             perSecond: 1
-        }
+        },
+        forgingQueue
     };
     const desiredSlots = BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
     const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));

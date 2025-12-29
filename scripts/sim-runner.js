@@ -128,6 +128,8 @@ export async function runSim(userConfig = {}) {
   const { RESEARCH_DEFINITIONS } = await import("../dist/engine/data/research.js");
   const { UPGRADE_DEFINITIONS } = await import("../dist/engine/data/upgrades.js");
   const { CONTRACT_DEFINITIONS } = await import("../dist/engine/data/contracts.js");
+  const { EQUIPMENT_BLUEPRINTS, findEquipmentBlueprint } = await import("../dist/engine/data/equipment.js");
+  const { getEquipmentModifiers } = await import("../dist/engine/equipment.js");
 
   let state = createInitialState(config.seed);
   const totals = {
@@ -203,6 +205,63 @@ export async function runSim(userConfig = {}) {
     }
   }
 
+  function startForgingIfPossible() {
+    if (state.forgingQueue?.active) return;
+    const affordable = EQUIPMENT_BLUEPRINTS.filter(
+      (bp) => state.resources.ore >= bp.cost.ore && state.resources.essence >= bp.cost.essence
+    );
+    if (affordable.length === 0) return;
+    const sorted = affordable
+      .slice()
+      .sort((a, b) => {
+        if (b.basePower !== a.basePower) return b.basePower - a.basePower;
+        return a.id.localeCompare(b.id);
+      });
+    const chosen = sorted[0];
+    const next = applyAction(state, { type: "startForge", blueprintId: chosen.id });
+    if (next !== state) {
+      state = next;
+    }
+  }
+
+  function equipmentScoreForInstance(instanceId) {
+    const item = state.equipmentInventory.items[instanceId];
+    if (!item) return -Infinity;
+    const currentModifiers = getEquipmentModifiers(state);
+    const hypothetical = {
+      ...state,
+      equipped: { ...state.equipped, [item.slot]: instanceId }
+    };
+    const nextModifiers = getEquipmentModifiers(hypothetical);
+    const productionGain = nextModifiers.productionMult - currentModifiers.productionMult;
+    const contractGain = nextModifiers.contractSpeedMult - currentModifiers.contractSpeedMult;
+    return productionGain * 10 + contractGain;
+  }
+
+  function equipBestAvailable() {
+    const items = Object.values(state.equipmentInventory.items ?? {});
+    const bySlot = {};
+    for (const item of items) {
+      bySlot[item.slot] = bySlot[item.slot] ?? [];
+      bySlot[item.slot].push(item);
+    }
+    Object.entries(bySlot).forEach(([slot, slotItems]) => {
+      slotItems.sort((a, b) => {
+        const scoreDiff = equipmentScoreForInstance(b.instanceId) - equipmentScoreForInstance(a.instanceId);
+        if (Math.abs(scoreDiff) > 1e-9) return scoreDiff;
+        const bpA = findEquipmentBlueprint(a.blueprintId);
+        const bpB = findEquipmentBlueprint(b.blueprintId);
+        const baseDiff = bpB.basePower - bpA.basePower;
+        if (Math.abs(baseDiff) > 1e-9) return baseDiff;
+        return a.instanceId.localeCompare(b.instanceId);
+      });
+      const best = slotItems[0];
+      if (best && state.equipped[slot] !== best.instanceId) {
+        state = applyAction(state, { type: "equip", instanceId: best.instanceId });
+      }
+    });
+  }
+
   function fillContracts() {
     while (true) {
       const active = state.contracts.slots.filter((slot) => slot.status === "active").length;
@@ -249,6 +308,8 @@ export async function runSim(userConfig = {}) {
     tryAscend();
     buyUpgrades();
     fillContracts();
+    startForgingIfPossible();
+    equipBestAvailable();
 
     state = tick(state, config.tickMs);
     elapsedMs += config.tickMs;

@@ -2,14 +2,15 @@ import { createInitialContractsState, ensureContractSlotCount } from "./contract
 import { FOCUS_COOLDOWN_MS } from "./sim";
 import { calculateProduction } from "./state";
 import type { EquipmentInstance, GameState } from "./types";
-import { initializeUpgradesRecord } from "./utils";
+import { initializeUpgradesRecord } from "./utils.js";
 import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { createEmptyResources } from "./resources";
 import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefaults } from "./equipment";
+import { createEmptyForgingQueue } from "./forging";
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -67,7 +68,8 @@ export function createInitialState(nowMs: number): GameState {
       items: { "1": starterEquipment },
       nextId: 2
     },
-    equipped: createEmptyEquipped()
+    equipped: createEmptyEquipped(),
+    forgingQueue: createEmptyForgingQueue()
   };
   return calculateProduction(base);
 }
@@ -101,6 +103,17 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
   }
 
   if (save.schemaVersion === 6) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+  if (save.schemaVersion === 7) {
     const migratedState: GameState = {
       ...(save as SerializedSave).state,
       schemaVersion: SCHEMA_VERSION
@@ -181,7 +194,8 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
       lastFocusAtMs: save.state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
       contracts: createInitialContractsState(),
       equipmentInventory: createEmptyEquipmentInventory(),
-      equipped: createEmptyEquipped()
+      equipped: createEmptyEquipped(),
+      forgingQueue: createEmptyForgingQueue()
     };
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -204,6 +218,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
 function applyStateDefaults(state: GameState): GameState {
   const withEquipment = ensureEquipmentDefaults(state);
   const withStarterEquipment = seedStarterEquipment(withEquipment);
+  const forgingQueue = withStarterEquipment.forgingQueue ?? createEmptyForgingQueue();
   const research = applyResearchDefaults(withStarterEquipment.research);
   const realm = buildRealmState(withStarterEquipment.realm?.current ?? getInitialRealmId(), withStarterEquipment.realm);
   const withResources: GameState = {
@@ -233,7 +248,8 @@ function applyStateDefaults(state: GameState): GameState {
       additiveBonus: 0,
       multiplier: 1,
       perSecond: 1
-    }
+    },
+    forgingQueue
   };
 
   const desiredSlots =

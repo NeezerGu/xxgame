@@ -1,7 +1,7 @@
 import { findUpgrade } from "./data/upgrades";
 import { INSIGHT_PROD_BONUS_PER_POINT, BASE_CONTRACT_SLOTS } from "./data/constants";
 import type { GameState } from "./types";
-import { initializeUpgradesRecord } from "./utils";
+import { initializeUpgradesRecord } from "./utils.js";
 import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
 import { getResearchModifiers } from "./research";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";

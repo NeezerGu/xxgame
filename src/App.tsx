@@ -14,6 +14,7 @@ import { getResource } from "@engine/resources";
 import { getEquipmentModifiers, getRarityMultiplier } from "@engine/equipment";
 import {
   AFFIX_DEFINITIONS,
+  EQUIPMENT_BLUEPRINTS,
   findAffixDefinition,
   findEquipmentBlueprint
 } from "@engine/data/equipment";
@@ -33,9 +34,9 @@ import { OFFLINE_CAP_MS } from "@engine/data/constants";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
-const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "equipment", "ascend", "dev", "help"];
+const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "equipment", "forging", "ascend", "dev", "help"];
 
-type TabKey = "realm" | "contracts" | "upgrades" | "research" | "equipment" | "ascend" | "dev" | "help";
+type TabKey = "realm" | "contracts" | "upgrades" | "research" | "equipment" | "forging" | "ascend" | "dev" | "help";
 type ContractSortMode = "default" | "score";
 const REWARD_DISPLAY_ORDER = ["research", "reputation", "essence", "herb", "ore", "insight"] as const;
 
@@ -106,6 +107,7 @@ function App() {
         { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
         { key: "research", label: t("tab.research", undefined, locale) },
         { key: "equipment", label: t("tab.equipment", undefined, locale) },
+        { key: "forging", label: t("tab.forging", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
         { key: "dev", label: t("tab.dev", undefined, locale) },
         { key: "help", label: t("tab.help", undefined, locale) }
@@ -240,6 +242,14 @@ function App() {
 
   const handleFastForward = (ms: number) => {
     setGameState((prev) => tick(prev, ms));
+  };
+
+  const handleStartForge = (blueprintId: (typeof EQUIPMENT_BLUEPRINTS)[number]["id"]) => {
+    setGameState((prev) => applyAction(prev, { type: "startForge", blueprintId }));
+  };
+
+  const handleDisassemble = (instanceId: string) => {
+    setGameState((prev) => applyAction(prev, { type: "disassemble", instanceId }));
   };
 
   const handleImport = () => {
@@ -468,7 +478,13 @@ function App() {
     }),
     [locale]
   );
+  const forgingBlueprints = useMemo(() => EQUIPMENT_BLUEPRINTS.slice(), []);
   const equipmentModifiers = useMemo(() => getEquipmentModifiers(gameState), [gameState]);
+  const forgingQueue = gameState.forgingQueue;
+  const activeForge = forgingQueue.active;
+  const activeForgeBlueprint = activeForge ? findEquipmentBlueprint(activeForge.blueprintId) : null;
+  const forgingProgress = activeForge && activeForge.totalMs > 0 ? Math.min(1, 1 - activeForge.remainingMs / activeForge.totalMs) : 0;
+  const lastForgedItem = forgingQueue.lastFinished;
   const equippedEntries = useMemo(
     () => {
       const equipped = gameState.equipped;
@@ -1208,11 +1224,116 @@ function App() {
                         <button className="action-button" onClick={() => handleEquip(item.instanceId)} disabled={isEquipped}>
                           {isEquipped ? t("equipment.isEquipped", undefined, locale) : t("equipment.equip", undefined, locale)}
                         </button>
+                        <button className="action-button secondary" onClick={() => handleDisassemble(item.instanceId)}>
+                          {t("equipment.disassemble", undefined, locale)}
+                        </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "forging" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("forging.title", undefined, locale)}</h2>
+              <p className="muted small">{t("forging.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t("forging.materials", { ore: formatInt(oreValue, locale), essence: formatInt(essence, locale) }, locale)}
+            </div>
+          </div>
+
+          <div className="help-section">
+            <h3>{t("forging.blueprints", undefined, locale)}</h3>
+            <div className="upgrade-list">
+              {forgingBlueprints.map((bp) => {
+                const affordable =
+                  oreValue >= bp.cost.ore && essence >= bp.cost.essence && !activeForge;
+                const disabledReason = activeForge
+                  ? t("forging.queueBusy", undefined, locale)
+                  : oreValue < bp.cost.ore
+                    ? t("forging.needOre", { ore: formatInt(bp.cost.ore, locale) }, locale)
+                    : essence < bp.cost.essence
+                      ? t("forging.needEssence", { essence: formatInt(bp.cost.essence, locale) }, locale)
+                      : null;
+                return (
+                  <div className="upgrade-row" key={bp.id}>
+                    <div>
+                      <strong>{t(bp.nameKey as MessageKey, undefined, locale)}</strong>
+                      <p className="muted small">{t(bp.descriptionKey as MessageKey, undefined, locale)}</p>
+                      <p className="muted small">
+                        {t("forging.costLine", { ore: formatInt(bp.cost.ore, locale), essence: formatInt(bp.cost.essence, locale) }, locale)}
+                      </p>
+                      <p className="muted small">
+                        {t("forging.timeLine", { seconds: formatSeconds(bp.forgeTimeMs / 1000) }, locale)}
+                      </p>
+                    </div>
+                    <div className="upgrade-actions">
+                      <button className="action-button" disabled={!affordable} onClick={() => handleStartForge(bp.id)} title={disabledReason ?? undefined}>
+                        {t("forging.start", undefined, locale)}
+                      </button>
+                      {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="help-section">
+            <h3>{t("forging.queueTitle", undefined, locale)}</h3>
+            {activeForge && activeForgeBlueprint ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t(activeForgeBlueprint.nameKey as MessageKey, undefined, locale)}</strong>
+                    <span className="status-pill status-active">{t("forging.inProgress", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">
+                    {t("forging.remaining", { seconds: formatSeconds(activeForge.remainingMs / 1000) }, locale)}
+                  </p>
+                  <div className="progress-bar contract-progress">
+                    <div className="progress-fill" style={{ width: `${forgingProgress * 100}%` }} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("forging.idle", undefined, locale)}</p>
+            )}
+          </div>
+
+          <div className="help-section">
+            <h3>{t("forging.lastFinished", undefined, locale)}</h3>
+            {lastForgedItem ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>
+                      {t(findEquipmentBlueprint(lastForgedItem.blueprintId).nameKey as MessageKey, undefined, locale)} •{" "}
+                      {rarityLabels[lastForgedItem.rarity]}
+                    </strong>
+                  </div>
+                  <ul className="muted small">
+                    {lastForgedItem.affixes.map((affix) => {
+                      const def = findAffixDefinition(affix.affixId);
+                      return (
+                        <li key={affix.affixId}>
+                          {t(def.nameKey as MessageKey, undefined, locale)} —{" "}
+                          {formatAffixEffect(affix.affixId, affix.value, lastForgedItem.rarity)}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("forging.none", undefined, locale)}</p>
             )}
           </div>
         </section>
