@@ -7,6 +7,7 @@ import { REALM_DEFINITIONS } from "./data/realms";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { getResearchModifiers } from "./research";
 import { getResource } from "./resources";
+import { refreshExpeditionUnlocks } from "./expeditions";
 
 interface AccumulatedUnlocks {
   unlockTabs: string[];
@@ -105,10 +106,10 @@ function applyUnlocks(state: GameState, unlocks: AccumulatedUnlocks): GameState 
   const desiredSlots = BASE_CONTRACT_SLOTS + researchModifiers.contractSlotsBonus;
   const withContracts = ensureContractSlotCount(state, desiredSlots);
 
-  return {
+  return refreshExpeditionUnlocks({
     ...withContracts,
     realm: updatedRealm
-  };
+  }, updatedRealm.current);
 }
 
 export function breakthrough(state: GameState): GameState {

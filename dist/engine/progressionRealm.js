@@ -3,6 +3,7 @@ import { REALM_DEFINITIONS } from "./data/realms";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { getResearchModifiers } from "./research";
 import { getResource } from "./resources";
+import { refreshExpeditionUnlocks } from "./expeditions";
 function mergeUnique(...arrays) {
     const merged = arrays.flat().filter((item) => Boolean(item));
     return Array.from(new Set(merged));
@@ -80,10 +81,10 @@ function applyUnlocks(state, unlocks) {
     const researchModifiers = getResearchModifiers(state);
     const desiredSlots = BASE_CONTRACT_SLOTS + researchModifiers.contractSlotsBonus;
     const withContracts = ensureContractSlotCount(state, desiredSlots);
-    return {
+    return refreshExpeditionUnlocks({
         ...withContracts,
         realm: updatedRealm
-    };
+    }, updatedRealm.current);
 }
 export function breakthrough(state) {
     if (!canBreakthrough(state)) {

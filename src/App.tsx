@@ -25,6 +25,7 @@ import {
   type DiscipleRole
 } from "@engine/data/disciples";
 import { getDiscipleModifiers } from "@engine/disciples";
+import { EXPEDITION_DEFINITIONS, findExpeditionDefinition, type ExpeditionId } from "@engine/data/expeditions";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -41,7 +42,19 @@ import { OFFLINE_CAP_MS } from "@engine/data/constants";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
-const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "equipment", "forging", "disciples", "ascend", "dev", "help"];
+const ALL_TABS: TabKey[] = [
+  "realm",
+  "contracts",
+  "upgrades",
+  "research",
+  "equipment",
+  "forging",
+  "expeditions",
+  "disciples",
+  "ascend",
+  "dev",
+  "help"
+];
 
 type TabKey =
   | "realm"
@@ -50,6 +63,7 @@ type TabKey =
   | "research"
   | "equipment"
   | "forging"
+  | "expeditions"
   | "disciples"
   | "ascend"
   | "dev"
@@ -108,6 +122,7 @@ function App() {
     const saved = safeReadStorage(CONTRACT_HIDE_STORAGE_KEY);
     return saved === "true";
   });
+  const [selectedExpeditionDisciple, setSelectedExpeditionDisciple] = useState<Record<string, string | null>>({});
 
   if (shouldCrash) {
     throw new Error("Manual crash trigger");
@@ -125,6 +140,7 @@ function App() {
         { key: "research", label: t("tab.research", undefined, locale) },
         { key: "equipment", label: t("tab.equipment", undefined, locale) },
         { key: "forging", label: t("tab.forging", undefined, locale) },
+        { key: "expeditions", label: t("tab.expeditions", undefined, locale) },
         { key: "disciples", label: t("tab.disciples", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
         { key: "dev", label: t("tab.dev", undefined, locale) },
@@ -276,6 +292,10 @@ function App() {
 
   const handleAssignDiscipleRole = (discipleId: string, role: DiscipleRole | null) => {
     setGameState((prev) => applyAction(prev, { type: "assignDiscipleRole", discipleId, role }));
+  };
+
+  const handleStartExpedition = (expeditionId: ExpeditionId, discipleId: string | null) => {
+    setGameState((prev) => applyAction(prev, { type: "startExpedition", expeditionId, discipleId }));
   };
 
   const handleImport = () => {
@@ -504,6 +524,7 @@ function App() {
     }),
     [locale]
   );
+  const expeditionDefinitions = useMemo(() => EXPEDITION_DEFINITIONS.slice(), []);
   const discipleModifiers = useMemo(() => getDiscipleModifiers(gameState), [gameState]);
   const discipleRoleLabels = useMemo<Record<DiscipleRole, string>>(
     () => ({
@@ -527,6 +548,7 @@ function App() {
   const activeForgeBlueprint = activeForge ? findEquipmentBlueprint(activeForge.blueprintId) : null;
   const forgingProgress = activeForge && activeForge.totalMs > 0 ? Math.min(1, 1 - activeForge.remainingMs / activeForge.totalMs) : 0;
   const lastForgedItem = forgingQueue.lastFinished;
+  const activeExpedition = gameState.expeditions.active;
   const equippedEntries = useMemo(
     () => {
       const equipped = gameState.equipped;
@@ -613,6 +635,21 @@ function App() {
             locale
           );
         }
+        default:
+          return "";
+      }
+    },
+    [locale]
+  );
+  const formatExpeditionReward = useCallback(
+    (reward: { type: "resource"; resourceId: ResourceId; amount: number } | { type: "recipe"; recipeId: string } | { type: "equipment"; blueprintId: string }) => {
+      switch (reward.type) {
+        case "resource":
+          return `${t(`stats.${reward.resourceId}` as MessageKey, undefined, locale)} +${formatCompact(reward.amount, { maxDecimals: 1 })}`;
+        case "recipe":
+          return t("expeditions.reward.recipe", { id: reward.recipeId }, locale);
+        case "equipment":
+          return t("expeditions.reward.equipment", { id: reward.blueprintId }, locale);
         default:
           return "";
       }
@@ -1420,6 +1457,141 @@ function App() {
               </div>
             ) : (
               <p className="muted small">{t("forging.none", undefined, locale)}</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "expeditions" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("expeditions.title", undefined, locale)}</h2>
+              <p className="muted small">{t("expeditions.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {activeExpedition ? t("expeditions.activeLabel", undefined, locale) : t("expeditions.idleLabel", undefined, locale)}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("expeditions.available", undefined, locale)}</h3>
+            <div className="upgrade-list">
+              {expeditionDefinitions.map((def) => {
+                const unlocked = gameState.expeditions.unlockedExpeditions[def.id];
+                const realmAllowed = !def.requiredRealm || gameState.realm.current === def.requiredRealm || gameState.realm.unlockedTabs.includes("realm");
+                const disabledReason = activeExpedition
+                  ? t("expeditions.reason.active", undefined, locale)
+                  : !unlocked || !realmAllowed
+                    ? t("expeditions.reason.locked", undefined, locale)
+                    : null;
+                const progressLocked = Boolean(disabledReason);
+                const discipleSelection = selectedExpeditionDisciple[def.id] ?? "";
+                return (
+                  <div className="upgrade-row" key={def.id}>
+                    <div>
+                      <strong>{t(def.nameKey as MessageKey, undefined, locale)}</strong>
+                      <p className="muted small">{t(def.descKey as MessageKey, undefined, locale)}</p>
+                      <p className="muted small">
+                        {t("expeditions.duration", { seconds: formatSeconds(def.durationMs / 1000) }, locale)}
+                      </p>
+                    </div>
+                    <div className="upgrade-actions">
+                      <label className="muted small">
+                        {t("expeditions.assignFollower", undefined, locale)}
+                        <select
+                          value={discipleSelection}
+                          onChange={(event) =>
+                            setSelectedExpeditionDisciple((prev) => ({ ...prev, [def.id]: event.target.value || null }))
+                          }
+                          style={{ marginLeft: "4px" }}
+                        >
+                          <option value="">{t("expeditions.noFollower", undefined, locale)}</option>
+                          {gameState.disciples.roster.map((disciple) => (
+                            <option key={disciple.id} value={disciple.id}>
+                              {t(findDiscipleArchetype(disciple.archetypeId).nameKey as MessageKey, undefined, locale)} •{" "}
+                              {disciple.role ? discipleRoleLabels[disciple.role] : t("disciples.unassigned", undefined, locale)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="action-button"
+                        disabled={progressLocked}
+                        onClick={() => handleStartExpedition(def.id, discipleSelection || null)}
+                        title={disabledReason ?? undefined}
+                      >
+                        {t("expeditions.start", undefined, locale)}
+                      </button>
+                      {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="help-section">
+            <h3>{t("expeditions.progressTitle", undefined, locale)}</h3>
+            {activeExpedition ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t(findExpeditionDefinition(activeExpedition.expeditionId).nameKey as MessageKey, undefined, locale)}</strong>
+                    <span className="status-pill status-active">{t("expeditions.inProgress", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">
+                    {t("expeditions.remaining", { seconds: formatSeconds(activeExpedition.remainingMs / 1000) }, locale)}
+                  </p>
+                  <div className="progress-bar contract-progress">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.min(1, 1 - activeExpedition.remainingMs / activeExpedition.totalMs) * 100}%` }}
+                    />
+                  </div>
+                  <div className="muted small">
+                    {t("expeditions.eventTimer", { seconds: formatSeconds(activeExpedition.nextEventMs / 1000) }, locale)}
+                  </div>
+                  <ul className="muted small">
+                    {activeExpedition.log.map((entry, index) => (
+                      <li key={`${entry}-${index}`}>{t(entry as MessageKey, undefined, locale)}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("expeditions.noActive", undefined, locale)}</p>
+            )}
+          </div>
+
+          <div className="help-section">
+            <h3>{t("expeditions.lastResult", undefined, locale)}</h3>
+            {gameState.expeditions.lastResult ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>
+                      {t(
+                        findExpeditionDefinition(gameState.expeditions.lastResult.expeditionId).nameKey as MessageKey,
+                        undefined,
+                        locale
+                      )}
+                    </strong>
+                    <span className="status-pill status-completed">{t("contracts.status.completed", undefined, locale)}</span>
+                  </div>
+                  <ul className="muted small">
+                    {gameState.expeditions.lastResult.log.map((entry, index) => (
+                      <li key={`${entry}-${index}`}>{t(entry as MessageKey, undefined, locale)}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="contract-actions">
+                  {gameState.expeditions.lastResult.rewards.map((reward, index) => (
+                    <RewardBadge key={index} label={t("expeditions.rewardLabel", undefined, locale)} amount={formatExpeditionReward(reward)} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("expeditions.noResult", undefined, locale)}</p>
             )}
           </div>
         </section>

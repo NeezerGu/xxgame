@@ -7,6 +7,7 @@ import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { addResources, createEmptyResources, getResource } from "./resources";
 import { getEquipmentModifiers } from "./equipment";
 import { syncAutomation } from "./disciples";
+import { createInitialExpeditionState } from "./expeditions";
 export const BASE_PRODUCTION = 1;
 export function calculateProduction(state) {
     const additiveBonus = Object.entries(state.upgrades).reduce((total, [id, level]) => {
@@ -40,6 +41,7 @@ export function calculateProduction(state) {
     };
 }
 export function resetState(state) {
+    const realm = resetStateRealm();
     const reset = {
         ...state,
         resources: addResources(createEmptyResources(), {
@@ -49,11 +51,12 @@ export function resetState(state) {
             essenceEarned: 0,
             contractsCompleted: 0
         },
-        realm: resetStateRealm(),
         research: state.research,
         upgrades: initializeUpgradesRecord(),
         lastFocusAtMs: null,
-        contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots))
+        realm,
+        contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots)),
+        expeditions: createInitialExpeditionState(realm.current)
     };
     return calculateProduction(syncAutomation(reset));
 }

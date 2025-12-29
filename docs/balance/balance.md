@@ -27,6 +27,16 @@
 | herb-gathering | 35 | 25 | 0 | 8 | 3 | 15 | 0 | 1.5 | 15 |
 | ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
+## 历练/秘境
+| ID | Duration(s) | Rolls | Stamina | Required Realm | Name Key | Desc Key |
+| --- | --- | --- | --- | --- | --- | --- |
+| sunken-archive | 45 | 2 | - | - | expeditions.sunkenArchive.name | expeditions.sunkenArchive.description |
+| shimmering-reef | 55 | 2 | - | ember-handler | expeditions.shimmeringReef.name | expeditions.shimmeringReef.description |
+| ember-crater | 60 | 3 | - | artisan-adept | expeditions.emberCrater.name | expeditions.emberCrater.description |
+| mist-labyrinth | 70 | 3 | - | array-keeper | expeditions.mistLabyrinth.name | expeditions.mistLabyrinth.description |
+| skyforge-span | 80 | 3 | - | forgemaster | expeditions.skyforgeSpan.name | expeditions.skyforgeSpan.description |
+| hollow-spire | 95 | 4 | - | domain-seeker | expeditions.hollowSpire.name | expeditions.hollowSpire.description |
+
 ## 弟子原型
 | ID | Base Aptitude | Allowed Roles | Name Key | Description Key |
 | --- | --- | --- | --- | --- |

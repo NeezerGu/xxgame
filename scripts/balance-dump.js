@@ -64,6 +64,7 @@ async function main() {
     FORGING_AFFIX_COUNT,
     DISASSEMBLE_REFUND_MULTIPLIER
   } = await loadModule("data/equipment.js");
+  const { EXPEDITION_DEFINITIONS } = await loadModule("data/expeditions.js");
   const { DISCIPLE_ARCHETYPES, DISCIPLE_RECRUIT_COST, DISCIPLE_ROLE_EFFECTS } = await loadModule("data/disciples.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
@@ -89,6 +90,7 @@ async function main() {
     forgingRarityWeights: FORGING_RARITY_WEIGHTS,
     forgingAffixCount: FORGING_AFFIX_COUNT,
     disassembleRefundMultiplier: DISASSEMBLE_REFUND_MULTIPLIER,
+    expeditions: EXPEDITION_DEFINITIONS,
     disciples: {
       archetypes: DISCIPLE_ARCHETYPES,
       recruitCost: DISCIPLE_RECRUIT_COST,
@@ -146,6 +148,15 @@ async function main() {
     c.requiredEssencePerSecond ?? 0,
     c.requiredReputation ?? 0
   ]);
+  const expeditionRows = EXPEDITION_DEFINITIONS.map((e) => [
+    e.id,
+    e.durationMs / 1000,
+    e.rewardRolls,
+    e.staminaCost ?? "-",
+    e.requiredRealm ?? "-",
+    e.nameKey,
+    e.descKey
+  ]);
   const discipleRows = DISCIPLE_ARCHETYPES.map((d) => [
     d.id,
     d.baseAptitude,
@@ -179,6 +190,8 @@ async function main() {
       ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],
       contractRows
     ),
+    "## 历练/秘境",
+    renderTable(["ID", "Duration(s)", "Rolls", "Stamina", "Required Realm", "Name Key", "Desc Key"], expeditionRows),
     "## 弟子原型",
     renderTable(["ID", "Base Aptitude", "Allowed Roles", "Name Key", "Description Key"], discipleRows),
     "## 弟子岗位效果",

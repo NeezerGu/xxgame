@@ -10,8 +10,9 @@ import { createEmptyResources } from "./resources";
 import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefaults } from "./equipment";
 import { createEmptyForgingQueue } from "./forging";
 import { createInitialAutomationState, createInitialDisciplesState, syncAutomation } from "./disciples";
+import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -71,6 +72,7 @@ export function createInitialState(nowMs: number): GameState {
     },
     disciples: createInitialDisciplesState(),
     automation: createInitialAutomationState(),
+    expeditions: createInitialExpeditionState(getInitialRealmId()),
     equipped: createEmptyEquipped(),
     forgingQueue: createEmptyForgingQueue()
   };
@@ -128,6 +130,17 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
   if (save.schemaVersion === 8) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+  if (save.schemaVersion === 9) {
     const migratedState: GameState = {
       ...(save as SerializedSave).state,
       schemaVersion: SCHEMA_VERSION
@@ -210,6 +223,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
       equipmentInventory: createEmptyEquipmentInventory(),
       equipped: createEmptyEquipped(),
       forgingQueue: createEmptyForgingQueue(),
+      expeditions: createInitialExpeditionState(getInitialRealmId()),
       disciples: createInitialDisciplesState(),
       automation: createInitialAutomationState()
     };
@@ -239,6 +253,7 @@ function applyStateDefaults(state: GameState): GameState {
   const realm = buildRealmState(withStarterEquipment.realm?.current ?? getInitialRealmId(), withStarterEquipment.realm);
   const disciples = withStarterEquipment.disciples ?? createInitialDisciplesState();
   const automation = withStarterEquipment.automation ?? createInitialAutomationState();
+  const expeditions = withStarterEquipment.expeditions ?? createInitialExpeditionState(realm.current);
   const withResources: GameState = {
     ...withStarterEquipment,
     schemaVersion: SCHEMA_VERSION,
@@ -269,6 +284,7 @@ function applyStateDefaults(state: GameState): GameState {
     },
     disciples,
     automation,
+    expeditions,
     forgingQueue
   };
 
@@ -276,7 +292,9 @@ function applyStateDefaults(state: GameState): GameState {
     BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
   const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));
 
-  return calculateProduction(syncAutomation(withContracts));
+  const withExpeditions = refreshExpeditionUnlocks({ ...withContracts, expeditions }, withContracts.realm.current);
+
+  return calculateProduction(syncAutomation(withExpeditions));
 }
 
 function seedStarterEquipment(state: GameState): GameState {

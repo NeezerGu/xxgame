@@ -132,6 +132,7 @@ export async function runSim(userConfig = {}) {
   const { EQUIPMENT_BLUEPRINTS, findEquipmentBlueprint } = await import("../dist/engine/data/equipment.js");
   const { getEquipmentModifiers } = await import("../dist/engine/equipment.js");
   const { DISCIPLE_RECRUIT_COST, DISCIPLE_ARCHETYPES } = await import("../dist/engine/data/disciples.js");
+  const { EXPEDITION_DEFINITIONS } = await import("../dist/engine/data/expeditions.js");
 
   let state = createInitialState(config.seed);
   const totals = {
@@ -265,6 +266,50 @@ export async function runSim(userConfig = {}) {
     });
   }
 
+  function expeditionRewardValue(entry) {
+    if (entry.type === "resource") return entry.amount;
+    if (entry.type === "recipe") return 180;
+    if (entry.type === "equipment") return 160;
+    return 0;
+  }
+
+  function expeditionScore(def) {
+    const totalWeight = def.rewardTable.reduce((sum, item) => sum + item.weight, 0);
+    const expectedValue =
+      def.rewardRolls *
+      def.rewardTable.reduce((sum, item) => sum + (item.weight / totalWeight) * expeditionRewardValue(item), 0);
+    return expectedValue / (def.durationMs / 1000);
+  }
+
+  function bestDiscipleForExpedition() {
+    const roster = state.disciples?.roster ?? [];
+    const preferredOrder = ["gatherer", "smith", "contractClerk", "alchemist"];
+    for (const role of preferredOrder) {
+      const found = roster.find((d) => d.role === role);
+      if (found) return found.id;
+    }
+    return null;
+  }
+
+  function startExpeditionIfIdle() {
+    if (state.expeditions?.active) return;
+    const available = EXPEDITION_DEFINITIONS.filter((def) => state.expeditions?.unlockedExpeditions?.[def.id]);
+    if (available.length === 0) return;
+    const sorted = available
+      .slice()
+      .sort((a, b) => {
+        const diff = expeditionScore(b) - expeditionScore(a);
+        if (Math.abs(diff) > 1e-9) return diff;
+        return a.id.localeCompare(b.id);
+      });
+    const chosen = sorted[0];
+    const discipleId = bestDiscipleForExpedition();
+    const next = applyAction(state, { type: "startExpedition", expeditionId: chosen.id, discipleId });
+    if (next !== state) {
+      state = next;
+    }
+  }
+
   function canRecruitDisciple() {
     return (
       state.resources.essence >= DISCIPLE_RECRUIT_COST.essence &&
@@ -346,6 +391,7 @@ export async function runSim(userConfig = {}) {
     buyUpgrades();
     fillContracts();
     startForgingIfPossible();
+    startExpeditionIfIdle();
     equipBestAvailable();
 
     state = tick(state, config.tickMs);

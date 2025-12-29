@@ -6,6 +6,7 @@ import type { RealmId } from "./data/realms";
 import type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
 
 export type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
+export type { RealmId } from "./data/realms";
 
 export interface ProductionState {
   basePerSecond: number;
@@ -15,6 +16,13 @@ export interface ProductionState {
 }
 
 export type ResourceId = "essence" | "insight" | "research" | "reputation" | "herb" | "ore";
+export type ExpeditionId =
+  | "sunken-archive"
+  | "shimmering-reef"
+  | "ember-crater"
+  | "mist-labyrinth"
+  | "skyforge-span"
+  | "hollow-spire";
 
 export type ResourcesState = Record<ResourceId, number>;
 
@@ -94,6 +102,33 @@ export interface AutomationState {
   autoAcceptContracts: boolean;
 }
 
+export interface ExpeditionActiveState {
+  expeditionId: ExpeditionId;
+  remainingMs: number;
+  totalMs: number;
+  log: string[];
+  discipleId: string | null;
+  nextEventMs: number;
+  rewardRollsRemaining: number;
+}
+
+export interface ExpeditionResult {
+  expeditionId: ExpeditionId;
+  rewards: ExpeditionReward[];
+  log: string[];
+}
+
+export type ExpeditionReward =
+  | { type: "resource"; resourceId: ResourceId; amount: number }
+  | { type: "recipe"; recipeId: string }
+  | { type: "equipment"; blueprintId: EquipmentBlueprintId };
+
+export interface ExpeditionState {
+  active: ExpeditionActiveState | null;
+  lastResult: ExpeditionResult | null;
+  unlockedExpeditions: Record<ExpeditionId, boolean>;
+}
+
 export interface ForgingTask {
   blueprintId: EquipmentBlueprintId;
   remainingMs: number;
@@ -122,6 +157,7 @@ export interface GameState {
   equipped: EquippedState;
   disciples: DisciplesState;
   automation: AutomationState;
+  expeditions: ExpeditionState;
   forgingQueue: ForgingQueueState;
 }
 
@@ -138,4 +174,5 @@ export type Action =
   | { type: "startForge"; blueprintId: EquipmentBlueprintId }
   | { type: "disassemble"; instanceId: string }
   | { type: "recruitDisciple" }
-  | { type: "assignDiscipleRole"; discipleId: string; role: DiscipleRole | null };
+  | { type: "assignDiscipleRole"; discipleId: string; role: DiscipleRole | null }
+  | { type: "startExpedition"; expeditionId: ExpeditionId; discipleId?: string | null };

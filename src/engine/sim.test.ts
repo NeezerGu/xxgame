@@ -8,6 +8,7 @@ import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { getInitialRealmId } from "./progressionRealm";
 import { DISCIPLE_RECRUIT_COST } from "./data/disciples";
+import { EXPEDITION_DEFINITIONS } from "./data/expeditions";
 import type { GameState } from "./types";
 
 const APPROX_EPSILON = 1e-9;
@@ -146,6 +147,21 @@ describe("disciples", () => {
     expect(progressed.resources.ore).toBeGreaterThan(prepared.resources.ore);
     expect(progressed.runStats.contractsCompleted).toBe(prepared.runStats.contractsCompleted + 1);
     expect(progressed.contracts.slots.some((slot) => slot.status === "active")).toBe(true);
+  });
+});
+
+describe("expeditions", () => {
+  it("starts and completes an expedition with rewards and logs", () => {
+    const base = createInitialState(0);
+    const expeditionId = EXPEDITION_DEFINITIONS[0].id;
+    const started = applyAction(base, { type: "startExpedition", expeditionId });
+    expect(started.expeditions.active?.expeditionId).toBe(expeditionId);
+    const duration = EXPEDITION_DEFINITIONS[0].durationMs;
+    const progressed = tick(started, duration + 1000);
+    expect(progressed.expeditions.active).toBeNull();
+    expect(progressed.expeditions.lastResult?.expeditionId).toBe(expeditionId);
+    expect(progressed.expeditions.lastResult?.rewards.length).toBeGreaterThan(0);
+    expect(progressed.expeditions.lastResult?.log.length).toBeGreaterThan(0);
   });
 });
 
