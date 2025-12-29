@@ -4,25 +4,34 @@ import { calculateProduction } from "./state";
 import { initializeUpgradesRecord } from "./utils";
 import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
-export const SCHEMA_VERSION = 4;
+import { buildRealmState, getInitialRealmId } from "./progressionRealm";
+import { createEmptyResources } from "./resources";
+import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefaults } from "./equipment";
+export const SCHEMA_VERSION = 7;
+function normalizeResources(resources) {
+    return createEmptyResources(resources ?? {});
+}
 function isLegacySerializedSaveV1(save) {
     return save.schemaVersion === 1 && "state" in save && "essence" in save.state;
 }
 export function createInitialState(nowMs) {
     const seed = Math.max(1, Math.floor(nowMs % 1000000));
+    const starterEquipment = {
+        instanceId: "1",
+        blueprintId: "ember-shiv",
+        slot: "weapon",
+        rarity: "common",
+        affixes: [{ affixId: "steady-flow", value: 0.05 }]
+    };
     const base = {
         schemaVersion: SCHEMA_VERSION,
         seed,
-        resources: {
-            essence: 0,
-            insight: 0,
-            research: 0,
-            reputation: 0
-        },
+        resources: createEmptyResources(),
         runStats: {
             essenceEarned: 0,
             contractsCompleted: 0
         },
+        realm: buildRealmState(getInitialRealmId()),
         research: initializeResearchState(),
         upgrades: initializeUpgradesRecord(),
         lastFocusAtMs: nowMs - FOCUS_COOLDOWN_MS,
@@ -32,7 +41,13 @@ export function createInitialState(nowMs) {
             multiplier: 1,
             perSecond: 1
         },
-        contracts: createInitialContractsState()
+        contracts: createInitialContractsState(),
+        equipmentInventory: {
+            ...createEmptyEquipmentInventory(),
+            items: { "1": starterEquipment },
+            nextId: 2
+        },
+        equipped: createEmptyEquipped()
     };
     return calculateProduction(base);
 }
@@ -53,6 +68,39 @@ export function migrateToLatest(save) {
         return {
             ...save,
             state: applyStateDefaults(save.state)
+        };
+    }
+    if (save.schemaVersion === 6) {
+        const migratedState = {
+            ...save.state,
+            schemaVersion: SCHEMA_VERSION
+        };
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            savedAtMs: save.savedAtMs ?? Date.now(),
+            state: applyStateDefaults(migratedState)
+        };
+    }
+    if (save.schemaVersion === 5) {
+        const migratedState = {
+            ...save.state,
+            schemaVersion: SCHEMA_VERSION
+        };
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            savedAtMs: save.savedAtMs ?? Date.now(),
+            state: applyStateDefaults(migratedState)
+        };
+    }
+    if (save.schemaVersion === 4) {
+        const migratedState = {
+            ...save.state,
+            schemaVersion: SCHEMA_VERSION
+        };
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            savedAtMs: save.savedAtMs ?? Date.now(),
+            state: applyStateDefaults(migratedState)
         };
     }
     if (save.schemaVersion === 3) {
@@ -81,21 +129,24 @@ export function migrateToLatest(save) {
         const migratedState = {
             schemaVersion: SCHEMA_VERSION,
             seed: Math.max(1, Math.floor(save.savedAtMs % 1000000)),
-            resources: {
+            resources: createEmptyResources({
                 essence: save.state.essence ?? 0,
                 insight: save.state.insight ?? 0,
                 research: 0,
                 reputation: 0
-            },
+            }),
             runStats: {
                 essenceEarned: 0,
                 contractsCompleted: 0
             },
+            realm: buildRealmState(getInitialRealmId()),
             production: save.state.production,
             upgrades: save.state.upgrades ?? initializeUpgradesRecord(),
             research: initializeResearchState(),
             lastFocusAtMs: save.state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
-            contracts: createInitialContractsState()
+            contracts: createInitialContractsState(),
+            equipmentInventory: createEmptyEquipmentInventory(),
+            equipped: createEmptyEquipped()
         };
         return {
             schemaVersion: SCHEMA_VERSION,
@@ -114,33 +165,32 @@ export function migrateToLatest(save) {
     };
 }
 function applyStateDefaults(state) {
-    const research = applyResearchDefaults(state.research);
+    const withEquipment = ensureEquipmentDefaults(state);
+    const withStarterEquipment = seedStarterEquipment(withEquipment);
+    const research = applyResearchDefaults(withStarterEquipment.research);
+    const realm = buildRealmState(withStarterEquipment.realm?.current ?? getInitialRealmId(), withStarterEquipment.realm);
     const withResources = {
-        ...state,
+        ...withStarterEquipment,
         schemaVersion: SCHEMA_VERSION,
-        seed: state.seed ?? 1,
-        resources: {
-            essence: state.resources?.essence ?? 0,
-            insight: state.resources?.insight ?? 0,
-            research: state.resources?.research ?? 0,
-            reputation: state.resources?.reputation ?? 0
-        },
+        seed: withStarterEquipment.seed ?? 1,
+        resources: normalizeResources(withStarterEquipment.resources),
         runStats: {
-            essenceEarned: state.runStats?.essenceEarned ?? 0,
-            contractsCompleted: state.runStats?.contractsCompleted ?? 0
+            essenceEarned: withStarterEquipment.runStats?.essenceEarned ?? 0,
+            contractsCompleted: withStarterEquipment.runStats?.contractsCompleted ?? 0
         },
-        contracts: state.contracts
+        realm,
+        contracts: withStarterEquipment.contracts
             ? {
-                maxSlots: state.contracts.maxSlots ??
-                    state.contracts.slots?.length ??
+                maxSlots: withStarterEquipment.contracts.maxSlots ??
+                    withStarterEquipment.contracts.slots?.length ??
                     createInitialContractsState().maxSlots,
-                slots: state.contracts.slots ?? createInitialContractsState().slots
+                slots: withStarterEquipment.contracts.slots ?? createInitialContractsState().slots
             }
             : createInitialContractsState(),
         research,
-        upgrades: state.upgrades ?? initializeUpgradesRecord(),
-        lastFocusAtMs: state.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
-        production: state.production ?? {
+        upgrades: withStarterEquipment.upgrades ?? initializeUpgradesRecord(),
+        lastFocusAtMs: withStarterEquipment.lastFocusAtMs ?? -FOCUS_COOLDOWN_MS,
+        production: withStarterEquipment.production ?? {
             basePerSecond: 1,
             additiveBonus: 0,
             multiplier: 1,
@@ -150,4 +200,26 @@ function applyStateDefaults(state) {
     const desiredSlots = BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
     const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));
     return calculateProduction(withContracts);
+}
+function seedStarterEquipment(state) {
+    const inventory = state.equipmentInventory ?? createEmptyEquipmentInventory();
+    if (Object.keys(inventory.items).length > 0) {
+        return state;
+    }
+    const nextId = inventory.nextId ?? 1;
+    const instanceId = `${nextId}`;
+    const starter = {
+        instanceId,
+        blueprintId: "ember-shiv",
+        slot: "weapon",
+        rarity: "common",
+        affixes: [{ affixId: "steady-flow", value: 0.05 }]
+    };
+    return {
+        ...state,
+        equipmentInventory: {
+            items: { ...inventory.items, [instanceId]: starter },
+            nextId: nextId + 1
+        }
+    };
 }

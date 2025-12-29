@@ -57,6 +57,7 @@ async function main() {
   const { UPGRADE_DEFINITIONS, getUpgradeCost } = await loadModule("data/upgrades.js");
   const { RESEARCH_DEFINITIONS } = await loadModule("data/research.js");
   const { CONTRACT_DEFINITIONS } = await loadModule("data/contracts.js");
+  const { EQUIPMENT_BLUEPRINTS, AFFIX_DEFINITIONS } = await loadModule("data/equipment.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
   const { RESOURCE_IDS } = await loadModule("resources.js");
@@ -75,7 +76,9 @@ async function main() {
     },
     upgrades: UPGRADE_DEFINITIONS,
     research: RESEARCH_DEFINITIONS,
-    contracts: CONTRACT_DEFINITIONS
+    contracts: CONTRACT_DEFINITIONS,
+    equipmentBlueprints: EQUIPMENT_BLUEPRINTS,
+    equipmentAffixes: AFFIX_DEFINITIONS
   };
 
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -97,6 +100,20 @@ async function main() {
     r.effect.type,
     formatResearchEffect(r.effect),
     (r.prerequisites ?? []).join(", ") || "-"
+  ]);
+  const equipmentBlueprintRows = EQUIPMENT_BLUEPRINTS.map((b) => [
+    b.id,
+    b.slot,
+    b.basePower,
+    b.nameKey,
+    b.descriptionKey
+  ]);
+  const equipmentAffixRows = AFFIX_DEFINITIONS.map((a) => [
+    a.id,
+    a.nameKey,
+    a.type,
+    a.min,
+    a.max
   ]);
   const contractRows = CONTRACT_DEFINITIONS.map((c) => [
     c.id,
@@ -122,6 +139,10 @@ async function main() {
       ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],
       contractRows
     ),
+    "## 装备蓝图",
+    renderTable(["ID", "Slot", "Base Power", "Name Key", "Description Key"], equipmentBlueprintRows),
+    "## 装备词缀",
+    renderTable(["ID", "Name Key", "Type", "Min", "Max"], equipmentAffixRows),
     "## 关键常量",
     renderTable(["Key", "Value"], constantsRows)
   ];

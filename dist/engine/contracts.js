@@ -1,5 +1,6 @@
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { CONTRACT_DEFINITIONS, findContractDefinition } from "./data/contracts";
+import { addResources, getResource, spendResources } from "./resources";
 const DEFAULT_CONTRACT_SLOTS = BASE_CONTRACT_SLOTS;
 export function createInitialContractsState(maxSlots = DEFAULT_CONTRACT_SLOTS) {
     const slots = CONTRACT_DEFINITIONS.map((def) => ({
@@ -27,13 +28,16 @@ export function acceptContract(state, contractId) {
     const requiredReputation = def.requiredReputation ?? 0;
     const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
     const acceptCostEssence = def.acceptCostEssence ?? 0;
-    if (state.resources.reputation < requiredReputation) {
+    if (!state.realm.unlockedContractIds.includes(contractId)) {
+        return state;
+    }
+    if (getResource(state.resources, "reputation") < requiredReputation) {
         return state;
     }
     if (state.production.perSecond < requiredEssencePerSecond) {
         return state;
     }
-    if (state.resources.essence < acceptCostEssence) {
+    if (getResource(state.resources, "essence") < acceptCostEssence) {
         return state;
     }
     if (activeSlots >= state.contracts.maxSlots) {
@@ -49,10 +53,7 @@ export function acceptContract(state, contractId) {
     };
     return {
         ...state,
-        resources: {
-            ...state.resources,
-            essence: state.resources.essence - acceptCostEssence
-        },
+        resources: spendResources(state.resources, { essence: acceptCostEssence }),
         contracts: replaceSlot(state.contracts, slotIndex, updatedSlot)
     };
 }
@@ -98,13 +99,7 @@ export function completeContract(state, contractId) {
         return state;
     }
     const reward = slot.reward;
-    const updatedResources = {
-        ...state.resources,
-        essence: state.resources.essence + (reward.essence ?? 0),
-        research: state.resources.research + (reward.research ?? 0),
-        insight: state.resources.insight + (reward.insight ?? 0),
-        reputation: state.resources.reputation + (reward.reputation ?? 0)
-    };
+    const updatedResources = addResources(state.resources, reward);
     const resetSlot = {
         ...slot,
         elapsedMs: 0,

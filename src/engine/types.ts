@@ -2,6 +2,9 @@ import type { ContractId } from "./data/contracts";
 import type { UpgradeId } from "./data/upgrades";
 import type { ResearchId } from "./data/research";
 import type { RealmId } from "./data/realms";
+import type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
+
+export type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
 
 export interface ProductionState {
   basePerSecond: number;
@@ -52,6 +55,26 @@ export interface RealmState {
   unlockedRecipeIds: string[];
 }
 
+export interface EquipmentAffixInstance {
+  affixId: AffixId;
+  value: number;
+}
+
+export interface EquipmentInstance {
+  instanceId: string;
+  blueprintId: EquipmentBlueprintId;
+  slot: EquipmentSlot;
+  rarity: EquipmentRarity;
+  affixes: EquipmentAffixInstance[];
+}
+
+export interface EquipmentInventoryState {
+  items: Record<string, EquipmentInstance>;
+  nextId: number;
+}
+
+export type EquippedState = Record<EquipmentSlot, string | null>;
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
@@ -63,6 +86,8 @@ export interface GameState {
   research: ResearchState;
   lastFocusAtMs: number | null;
   contracts: ContractsState;
+  equipmentInventory: EquipmentInventoryState;
+  equipped: EquippedState;
 }
 
 export type Action =
@@ -72,4 +97,6 @@ export type Action =
   | { type: "acceptContract"; contractId: ContractId }
   | { type: "completeContract"; contractId: ContractId }
   | { type: "buyResearch"; researchId: ResearchId }
-  | { type: "breakthrough" };
+  | { type: "breakthrough" }
+  | { type: "equip"; instanceId: string }
+  | { type: "unequip"; slot: EquipmentSlot };

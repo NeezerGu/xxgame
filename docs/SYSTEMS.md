@@ -10,6 +10,8 @@
 - `upgrades`: record<string, { level: number, unlocked: boolean }>。
 - `runStats`: { `essenceEarned`: number, `contractsCompleted`: number } — 记录本轮累计获得的精华与完成契约数，用于飞升收益公式。
 - `realm`: { `current`: RealmId, `unlockedTabs`: string[], `unlockedContractIds`: string[], `unlockedResearchIds`: string[], `unlockedRecipeIds`: string[] } — 境界状态与解锁表，境界突破会叠加解锁，飞升后重置回初始境界但保留研究。
+- `equipmentInventory`: { `items`: Record<instanceId, { blueprintId, slot, rarity, affixes: Array<{ affixId, value }> }>, `nextId`: number } — 装备背包，实例化后的装备记录稀有度与词缀数值。
+- `equipped`: Record<EquipmentSlot, string | null> — 每个槽位当前穿戴的装备实例 ID。
 - `contracts`: {
   - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: Partial<Record<ResourceId, number>> }>;
   - `maxSlots`: number;
@@ -26,6 +28,8 @@
 - `ACCEPT_CONTRACT(id)` — 将待选契约放入空槽位并开始计时。
 - `COMPLETE_CONTRACT(slotId)` — 结算完成的契约并发放奖励。
 - `BUY_RESEARCH(id)` — 购买研究节点。
+- `EQUIP(instanceId)` — 将背包中的装备实例穿戴到对应槽位（同槽位会替换旧装备引用）。
+- `UNEQUIP(slot)` — 卸下槽位上的装备。
 - `ASCEND` — 触发软重置并计算 Insight。
 - `BREAKTHROUGH` — 当满足下一境界条件时，切换至下一境界并应用对应解锁。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()` — 读写存档字符串。
@@ -79,7 +83,9 @@
 
 ## 派生值计算
 - 产率（rates）：基于基础产出 × 升级乘区 × 研究乘区 × Insight 乘区；可缓存但需在相关动作后刷新。
-- 产率（当前实现示例）：`perSecond = (base + additive) × upgradeMult × researchMult × (1 + insight × 0.05)`。
+- 产率（当前实现示例）：`perSecond = (base + additive) × upgradeMult × researchMult × equipmentMult × (1 + insight × 0.05)`。
 - 契约完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。研究可提供速度乘区或额外槽位。
+- 契约速度乘区：`speedMultiplier = researchContractMult × equipmentContractMult`，与研究叠乘。
 - Ascend 预览：基于当前/累计指标计算，下行取整以防止浮点误差。
 - 离线模拟：`effectiveOffline = min(now - timestamp, offlineCapMs)`；按固定 tick 迭代调用 TICK，避免一次性大步长偏差。
+- 离线上限：`offlineCapMs = baseOfflineCapMs + equipmentOfflineBonus`（当前基础为 8h，可由装备词缀增加）。

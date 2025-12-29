@@ -362,6 +362,25 @@ describe("save migration", () => {
     expect(migrated.state.realm.unlockedTabs.length).toBeGreaterThan(0);
   });
 
+  it("fills equipment data when migrating schema v6 saves", () => {
+    const legacy = {
+      schemaVersion: 6,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 6
+      }
+    };
+    // @ts-expect-error simulate legacy save without equipment fields
+    delete legacy.state.equipmentInventory;
+    // @ts-expect-error simulate legacy save without equipped state
+    delete legacy.state.equipped;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(Object.values(migrated.state.equipmentInventory.items)).not.toHaveLength(0);
+    expect(migrated.state.equipped.weapon === null || typeof migrated.state.equipped.weapon === "string").toBe(true);
+  });
+
   it("fills new resource keys when migrating schema v5 saves", () => {
     const legacy = {
       schemaVersion: 5,

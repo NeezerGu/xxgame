@@ -4,13 +4,19 @@ import { ASCEND_THRESHOLD, calculateInsightGain, canAscend } from "@engine/progr
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
-import type { GameState, ResourceId } from "@engine/types";
+import type { EquipmentSlot, GameState, ResourceId } from "@engine/types";
 import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
 import { canBreakthrough, getCurrentRealm, getNextRealm } from "@engine/progressionRealm";
 import { getResource } from "@engine/resources";
+import { getEquipmentModifiers, getRarityMultiplier } from "@engine/equipment";
+import {
+  AFFIX_DEFINITIONS,
+  findAffixDefinition,
+  findEquipmentBlueprint
+} from "@engine/data/equipment";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -23,12 +29,13 @@ import {
   SAVE_KEY,
   TAB_STORAGE_KEY
 } from "./constants/storage";
+import { OFFLINE_CAP_MS } from "@engine/data/constants";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
-const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "ascend", "dev", "help"];
+const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "equipment", "ascend", "dev", "help"];
 
-type TabKey = "realm" | "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
+type TabKey = "realm" | "contracts" | "upgrades" | "research" | "equipment" | "ascend" | "dev" | "help";
 type ContractSortMode = "default" | "score";
 const REWARD_DISPLAY_ORDER = ["research", "reputation", "essence", "herb", "ore", "insight"] as const;
 
@@ -98,6 +105,7 @@ function App() {
         { key: "contracts", label: t("tab.contracts", undefined, locale) },
         { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
         { key: "research", label: t("tab.research", undefined, locale) },
+        { key: "equipment", label: t("tab.equipment", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
         { key: "dev", label: t("tab.dev", undefined, locale) },
         { key: "help", label: t("tab.help", undefined, locale) }
@@ -220,6 +228,14 @@ function App() {
 
   const handleBuyResearch = (researchId: (typeof RESEARCH_DEFINITIONS)[number]["id"]) => {
     setGameState((prev) => applyAction(prev, { type: "buyResearch", researchId }));
+  };
+
+  const handleEquip = (instanceId: string) => {
+    setGameState((prev) => applyAction(prev, { type: "equip", instanceId }));
+  };
+
+  const handleUnequip = (slot: EquipmentSlot) => {
+    setGameState((prev) => applyAction(prev, { type: "unequip", slot }));
   };
 
   const handleFastForward = (ms: number) => {
@@ -432,6 +448,73 @@ function App() {
       herb: t("stats.herb", undefined, locale),
       ore: t("stats.ore", undefined, locale)
     }),
+    [locale]
+  );
+  const slotLabels = useMemo<Record<EquipmentSlot, string>>(
+    () => ({
+      weapon: t("equipment.slot.weapon", undefined, locale),
+      armor: t("equipment.slot.armor", undefined, locale),
+      ring: t("equipment.slot.ring", undefined, locale),
+      amulet: t("equipment.slot.amulet", undefined, locale)
+    }),
+    [locale]
+  );
+  const rarityLabels = useMemo(
+    () => ({
+      common: t("equipment.rarity.common", undefined, locale),
+      uncommon: t("equipment.rarity.uncommon", undefined, locale),
+      rare: t("equipment.rarity.rare", undefined, locale),
+      epic: t("equipment.rarity.epic", undefined, locale)
+    }),
+    [locale]
+  );
+  const equipmentModifiers = useMemo(() => getEquipmentModifiers(gameState), [gameState]);
+  const equippedEntries = useMemo(
+    () => {
+      const equipped = gameState.equipped;
+      const items = gameState.equipmentInventory.items;
+      return (Object.keys(equipped) as EquipmentSlot[]).map((slot) => {
+        const instanceId = equipped[slot];
+        const item = instanceId ? items[instanceId] : null;
+        return { slot, instanceId, item };
+      });
+    },
+    [gameState.equipped, gameState.equipmentInventory.items]
+  );
+  const inventoryItems = useMemo(
+    () =>
+      Object.values(gameState.equipmentInventory.items).sort(
+        (a, b) => Number(a.instanceId) - Number(b.instanceId)
+      ),
+    [gameState.equipmentInventory.items]
+  );
+  const equippedInstanceIds = useMemo(
+    () => new Set(Object.values(gameState.equipped).filter(Boolean) as string[]),
+    [gameState.equipped]
+  );
+  const effectiveOfflineCapMs = useMemo(
+    () => OFFLINE_CAP_MS + equipmentModifiers.offlineCapBonusMs,
+    [equipmentModifiers.offlineCapBonusMs]
+  );
+  const formatAffixEffect = useCallback(
+    (affixId: (typeof AFFIX_DEFINITIONS)[number]["id"], value: number, rarity: string) => {
+      const def = findAffixDefinition(affixId);
+      const effectiveValue = value * getRarityMultiplier(rarity);
+      switch (def.type) {
+        case "productionMult":
+          return t("equipment.affixEffect.productionMult", { value: (effectiveValue * 100).toFixed(1) }, locale);
+        case "contractSpeedMult":
+          return t("equipment.affixEffect.contractSpeedMult", { value: (effectiveValue * 100).toFixed(1) }, locale);
+        case "offlineCapBonus":
+          return t("equipment.affixEffect.offlineCapBonus", { minutes: Math.round(effectiveValue / 60000) }, locale);
+        default:
+          return "";
+      }
+    },
+    [locale]
+  );
+  const formatBasePowerLine = useCallback(
+    (basePower: number) => t("equipment.basePowerLine", { value: (basePower * 100).toFixed(1) }, locale),
     [locale]
   );
   const glossaryEntries = useMemo(
@@ -992,6 +1075,145 @@ function App() {
                 </div>
               );
             })}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "equipment" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("equipment.title", undefined, locale)}</h2>
+              <p className="muted small">{t("equipment.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t(
+                "equipment.summaryLine",
+                {
+                  production: equipmentModifiers.productionMult.toFixed(2),
+                  contract: equipmentModifiers.contractSpeedMult.toFixed(2),
+                  offline: formatSeconds(effectiveOfflineCapMs / 1000)
+                },
+                locale
+              )}
+            </div>
+          </div>
+          <div className="reputation-summary">
+            <div>
+              {t(
+                "equipment.productionSummary",
+                {
+                  value: ((equipmentModifiers.productionMult - 1) * 100).toFixed(1)
+                },
+                locale
+              )}
+            </div>
+            <div>
+              {t(
+                "equipment.contractSummary",
+                {
+                  value: ((equipmentModifiers.contractSpeedMult - 1) * 100).toFixed(1)
+                },
+                locale
+              )}
+            </div>
+            <div>
+              {t(
+                "equipment.offlineSummary",
+                {
+                  base: formatSeconds(OFFLINE_CAP_MS / 1000),
+                  bonusMinutes: Math.round(equipmentModifiers.offlineCapBonusMs / 60000)
+                },
+                locale
+              )}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("equipment.equippedTitle", undefined, locale)}</h3>
+            <div className="upgrade-list">
+              {equippedEntries.map((entry) => {
+                const item = entry.item;
+                const blueprint = item ? findEquipmentBlueprint(item.blueprintId) : null;
+                return (
+                  <div className="upgrade-row" key={entry.slot}>
+                    <div>
+                      <strong>{slotLabels[entry.slot]}</strong>
+                      {item && blueprint ? (
+                        <>
+                          <p className="muted small">
+                            {t(blueprint.nameKey as MessageKey, undefined, locale)} • {rarityLabels[item.rarity]}
+                          </p>
+                          <p className="muted small">{t(blueprint.descriptionKey as MessageKey, undefined, locale)}</p>
+                          <p className="muted small">{formatBasePowerLine(blueprint.basePower)}</p>
+                          <ul className="muted small">
+                            {item.affixes.map((affix) => {
+                              const def = findAffixDefinition(affix.affixId);
+                              return (
+                                <li key={affix.affixId}>
+                                  {t(def.nameKey as MessageKey, undefined, locale)} —{" "}
+                                  {formatAffixEffect(affix.affixId, affix.value, item.rarity)}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </>
+                      ) : (
+                        <p className="muted small">{t("equipment.emptySlot", undefined, locale)}</p>
+                      )}
+                    </div>
+                    <div className="upgrade-actions">
+                      {item ? (
+                        <button className="action-button secondary" onClick={() => handleUnequip(entry.slot)}>
+                          {t("equipment.unequip", undefined, locale)}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("equipment.inventoryTitle", undefined, locale)}</h3>
+            {inventoryItems.length === 0 ? (
+              <p className="muted small">{t("equipment.emptyInventory", undefined, locale)}</p>
+            ) : (
+              <div className="upgrade-list">
+                {inventoryItems.map((item) => {
+                  const blueprint = findEquipmentBlueprint(item.blueprintId);
+                  const isEquipped = equippedInstanceIds.has(item.instanceId);
+                  return (
+                    <div className="upgrade-row" key={item.instanceId}>
+                      <div>
+                        <strong>
+                          {t(blueprint.nameKey as MessageKey, undefined, locale)} • {rarityLabels[item.rarity]}
+                        </strong>
+                        <p className="muted small">
+                          {slotLabels[item.slot]} • {t(blueprint.descriptionKey as MessageKey, undefined, locale)}
+                        </p>
+                        <p className="muted small">{formatBasePowerLine(blueprint.basePower)}</p>
+                        <ul className="muted small">
+                          {item.affixes.map((affix) => {
+                            const def = findAffixDefinition(affix.affixId);
+                            return (
+                              <li key={`${item.instanceId}-${affix.affixId}`}>
+                                {t(def.nameKey as MessageKey, undefined, locale)} —{" "}
+                                {formatAffixEffect(affix.affixId, affix.value, item.rarity)}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                      <div className="upgrade-actions">
+                        <button className="action-button" onClick={() => handleEquip(item.instanceId)} disabled={isEquipped}>
+                          {isEquipped ? t("equipment.isEquipped", undefined, locale) : t("equipment.equip", undefined, locale)}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       ) : null}

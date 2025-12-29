@@ -27,6 +27,24 @@
 | herb-gathering | 35 | 25 | 0 | 8 | 3 | 15 | 0 | 1.5 | 15 |
 | ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
+## 装备蓝图
+| ID | Slot | Base Power | Name Key | Description Key |
+| --- | --- | --- | --- | --- |
+| ember-shiv | weapon | 0.05 | equipment.blueprint.emberShiv.name | equipment.blueprint.emberShiv.description |
+| woven-ward | armor | 0.04 | equipment.blueprint.wovenWard.name | equipment.blueprint.wovenWard.description |
+| circuit-band | ring | 0.03 | equipment.blueprint.circuitBand.name | equipment.blueprint.circuitBand.description |
+| glyph-charm | amulet | 0.025 | equipment.blueprint.glyphCharm.name | equipment.blueprint.glyphCharm.description |
+
+## 装备词缀
+| ID | Name Key | Type | Min | Max |
+| --- | --- | --- | --- | --- |
+| steady-flow | equipment.affix.steadyFlow.name | productionMult | 0.04 | 0.08 |
+| swift-handling | equipment.affix.swiftHandling.name | contractSpeedMult | 0.08 | 0.12 |
+| deep-reserve | equipment.affix.deepReserve.name | offlineCapBonus | 1200000 | 2400000 |
+| focused-channels | equipment.affix.focusedChannels.name | productionMult | 0.06 | 0.1 |
+| rapid-binding | equipment.affix.rapidBinding.name | contractSpeedMult | 0.05 | 0.1 |
+| anchored-focus | equipment.affix.anchoredFocus.name | offlineCapBonus | 600000 | 1500000 |
+
 ## 关键常量
 | Key | Value |
 | --- | --- |

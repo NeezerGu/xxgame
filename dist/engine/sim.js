@@ -3,6 +3,9 @@ import { ascend } from "./progression";
 import { calculateProduction } from "./state";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
+import { breakthrough } from "./progressionRealm";
+import { addResources, getResource } from "./resources";
+import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
 export function tick(state, dtMs) {
@@ -12,20 +15,18 @@ export function tick(state, dtMs) {
     const perSecond = state.production.perSecond;
     const deltaSeconds = dtMs / 1000;
     const deltaEssence = perSecond * deltaSeconds;
-    const nextEssence = state.resources.essence + deltaEssence;
+    const nextResources = addResources(state.resources, { essence: deltaEssence });
     const researchModifiers = getResearchModifiers(state);
+    const equipmentModifiers = getEquipmentModifiers(state);
     const withResources = {
         ...state,
-        resources: {
-            ...state.resources,
-            essence: nextEssence
-        },
+        resources: nextResources,
         runStats: {
             ...state.runStats,
             essenceEarned: state.runStats.essenceEarned + deltaEssence
         }
     };
-    return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult);
+    return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult);
 }
 export function applyAction(state, action) {
     switch (action.type) {
@@ -35,10 +36,7 @@ export function applyAction(state, action) {
             }
             return {
                 ...state,
-                resources: {
-                    ...state.resources,
-                    essence: state.resources.essence + FOCUS_GAIN
-                },
+                resources: addResources(state.resources, { essence: FOCUS_GAIN }),
                 runStats: {
                     ...state.runStats,
                     essenceEarned: state.runStats.essenceEarned + FOCUS_GAIN
@@ -50,7 +48,7 @@ export function applyAction(state, action) {
             const upgradeDef = findUpgrade(action.upgradeId);
             const currentLevel = state.upgrades[upgradeDef.id] ?? 0;
             const cost = getUpgradeCost(upgradeDef, currentLevel);
-            if (state.resources.essence < cost) {
+            if (getResource(state.resources, "essence") < cost) {
                 return state;
             }
             const newUpgrades = {
@@ -59,16 +57,16 @@ export function applyAction(state, action) {
             };
             const updated = {
                 ...state,
-                resources: {
-                    ...state.resources,
-                    essence: state.resources.essence - cost
-                },
+                resources: addResources(state.resources, { essence: -cost }),
                 upgrades: newUpgrades
             };
             return calculateProduction(updated);
         }
         case "ascend": {
             return calculateProduction(ascend(state));
+        }
+        case "breakthrough": {
+            return calculateProduction(breakthrough(state));
         }
         case "acceptContract": {
             return acceptContract(state, action.contractId);
@@ -78,6 +76,20 @@ export function applyAction(state, action) {
         }
         case "buyResearch": {
             const updated = applyResearchPurchase(state, action.researchId);
+            return calculateProduction(updated);
+        }
+        case "equip": {
+            const updated = equipItem(state, action.instanceId);
+            if (updated === state) {
+                return state;
+            }
+            return calculateProduction(updated);
+        }
+        case "unequip": {
+            const updated = unequipSlot(state, action.slot);
+            if (updated === state) {
+                return state;
+            }
             return calculateProduction(updated);
         }
         default: {

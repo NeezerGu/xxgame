@@ -2,7 +2,7 @@
 
 ## 产出与乘区
 - 基础产出：`baseRateE`（E/s），可随升级等级线性提升；研究可解锁新基础产出或加速。
-- 乘区结构（当前实现）：`rate = (base + additive) × upgradeMult × researchMult × (1 + insight × 0.05)`，其中 Insight 每点提供 5% 产出乘区。
+- 乘区结构（当前实现）：`rate = (base + additive) × upgradeMult × researchMult × equipmentMult × (1 + insight × 0.05)`，其中 Insight 每点提供 5% 产出乘区，装备乘区来自当前穿戴实例的基础共振与词缀。
 - 冷却与主动：Focus 奖励可设为 `focusGain = baseFocus × (1 + modifiers)`，冷却随升级缩短但有最小值。
 
 ## 成本曲线（示例区间）
@@ -10,6 +10,7 @@
 - 当前实现：`cost = baseCost × growth^level`（向下取整，level 从 0 开始）。
 - 契约接单成本（可选）：固定费用或按声望阶梯增长，防止无限刷新。
 - 研究成本：以 Research 点或 Insight 支付，使用阶梯指数 `cost0 × r^(tier)`；跨分支成本区分，避免单一路径压制。
+- 装备：蓝图与词缀定义位于 `src/engine/data/equipment.ts`，实例化后存入背包，稀有度对基础共振与词缀数值做乘区放大。
 
 ## 契约奖励与评分
 - 奖励模板：`rewardE = baseE × (1 + repTier)`，`rewardR = baseR × speedFactor`；Insight 仅在高阶契约或 Ascend 结算时给出。
@@ -30,5 +31,6 @@
 
 ## 离线收益上限策略
 - 离线时长上限：`offlineCapMs`（默认 8h，可调）；若超出则截断。
+- 装备可提供 `offlineCapBonusMs` 加成：`effectiveCap = baseCap + bonus`，用于离线结算上限。
 - 结算方式：按固定 tick 封顶迭代，避免大步长误差；契约按有效时长推进，若需玩家提交资源则保持 pending。
 - 防止爆仓：资源上限或递减系数，`effectiveGain = min(rawGain, cap)`，或设置仓储容量与自动售出比例。

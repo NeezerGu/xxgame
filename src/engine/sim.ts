@@ -6,6 +6,7 @@ import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
 import { breakthrough } from "./progressionRealm";
 import { addResources, getResource } from "./resources";
+import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -20,6 +21,7 @@ export function tick(state: GameState, dtMs: number): GameState {
   const deltaEssence = perSecond * deltaSeconds;
   const nextResources = addResources(state.resources, { essence: deltaEssence });
   const researchModifiers = getResearchModifiers(state);
+  const equipmentModifiers = getEquipmentModifiers(state);
 
   const withResources: GameState = {
     ...state,
@@ -30,7 +32,11 @@ export function tick(state: GameState, dtMs: number): GameState {
     }
   };
 
-  return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult);
+  return progressContracts(
+    withResources,
+    dtMs,
+    researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult
+  );
 }
 
 export function applyAction(state: GameState, action: Action): GameState {
@@ -84,6 +90,20 @@ export function applyAction(state: GameState, action: Action): GameState {
     }
     case "buyResearch": {
       const updated = applyResearchPurchase(state, action.researchId);
+      return calculateProduction(updated);
+    }
+    case "equip": {
+      const updated = equipItem(state, action.instanceId);
+      if (updated === state) {
+        return state;
+      }
+      return calculateProduction(updated);
+    }
+    case "unequip": {
+      const updated = unequipSlot(state, action.slot);
+      if (updated === state) {
+        return state;
+      }
       return calculateProduction(updated);
     }
     default: {
