@@ -6,6 +6,7 @@ import { getContractProgress } from "./contracts";
 import { calculateProduction } from "./state";
 import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
+import { getInitialRealmId } from "./progressionRealm";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -200,6 +201,21 @@ describe("contracts", () => {
     expect(allowedSlot?.status).toBe("active");
     expect(allowed.resources.essence).toBeCloseTo(70);
   });
+
+  it("awards material resources from contracts", () => {
+    const base = createInitialState(0);
+    const prepared = {
+      ...base,
+      resources: { ...base.resources, reputation: 20, essence: 100 },
+      production: { ...base.production, basePerSecond: 2, perSecond: 2 }
+    };
+    const accepted = applyAction(prepared, { type: "acceptContract", contractId: "herb-gathering" });
+    const progressed = tick(accepted, 40_000);
+    const claimed = applyAction(progressed, { type: "completeContract", contractId: "herb-gathering" });
+
+    expect(claimed.resources.herb).toBeGreaterThan(0);
+    expect(claimed.runStats.contractsCompleted).toBeGreaterThan(prepared.runStats.contractsCompleted);
+  });
 });
 
 describe("research system", () => {
@@ -327,5 +343,44 @@ describe("save migration", () => {
     const migrated = deserialize(JSON.stringify(legacy));
     expect(migrated.state.runStats.essenceEarned).toBe(0);
     expect(migrated.state.runStats.contractsCompleted).toBe(0);
+  });
+
+  it("hydrates missing realm data for legacy saves", () => {
+    const legacy = {
+      schemaVersion: 4,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 4
+      }
+    };
+    // @ts-expect-error simulate legacy save without realm
+    delete legacy.state.realm;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.state.realm.current).toBe(getInitialRealmId());
+    expect(migrated.state.realm.unlockedTabs.length).toBeGreaterThan(0);
+  });
+
+  it("fills new resource keys when migrating schema v5 saves", () => {
+    const legacy = {
+      schemaVersion: 5,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 5,
+        resources: {
+          essence: 20,
+          insight: 2,
+          research: 3,
+          reputation: 4
+        }
+      }
+    };
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.state.resources.herb).toBe(0);
+    expect(migrated.state.resources.ore).toBe(0);
+    expect(migrated.state.resources.essence).toBe(20);
   });
 });

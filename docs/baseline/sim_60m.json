@@ -24,7 +24,9 @@
         "essence": 251.04750000000004,
         "insight": 91270,
         "research": 0,
-        "reputation": 0
+        "reputation": 0,
+        "herb": 0,
+        "ore": 0
       },
       "productionPerSecond": 5020.950000000001,
       "reputation": 0,

@@ -14,16 +14,18 @@
 | extraContractSlot | 12 | contractSlot | +1 slot(s) | productionBoost |
 
 ## 契约
-| ID | Duration(s) | Reward Research | Reward Reputation | Reward Essence | Req EPS | Req Reputation |
-| --- | --- | --- | --- | --- | --- | --- |
-| starter-recon | 10 | 2 | 1 | 15 | 0 | 0 |
-| essence-delivery | 20 | 3 | 1 | 40 | 0.5 | 0 |
-| lab-support | 30 | 7 | 2 | 55 | 1 | 0 |
-| field-analysis | 28 | 16 | 4 | 45 | 1.5 | 10 |
-| relay-maintenance | 32 | 10 | 3 | 95 | 1.5 | 10 |
-| artifact-catalog | 36 | 18 | 5 | 40 | 2 | 10 |
-| stabilize-array | 45 | 20 | 7 | 100 | 2.5 | 25 |
-| sealed-archive | 55 | 28 | 12 | 130 | 3 | 50 |
+| ID | Duration(s) | Reward essence | Reward insight | Reward research | Reward reputation | Reward herb | Reward ore | Req EPS | Req Reputation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| starter-recon | 10 | 15 | 0 | 2 | 1 | 0 | 0 | 0 | 0 |
+| essence-delivery | 20 | 40 | 0 | 3 | 1 | 0 | 0 | 0.5 | 0 |
+| lab-support | 30 | 55 | 0 | 7 | 2 | 0 | 0 | 1 | 0 |
+| field-analysis | 28 | 45 | 0 | 16 | 4 | 0 | 0 | 1.5 | 10 |
+| relay-maintenance | 32 | 95 | 0 | 10 | 3 | 0 | 0 | 1.5 | 10 |
+| artifact-catalog | 36 | 40 | 0 | 18 | 5 | 0 | 0 | 2 | 10 |
+| stabilize-array | 45 | 100 | 0 | 20 | 7 | 0 | 0 | 2.5 | 25 |
+| sealed-archive | 55 | 130 | 0 | 28 | 12 | 0 | 0 | 3 | 50 |
+| herb-gathering | 35 | 25 | 0 | 8 | 3 | 15 | 0 | 1.5 | 15 |
+| ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
 ## 关键常量
 | Key | Value |

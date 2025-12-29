@@ -5,12 +5,13 @@
 - `seed`: number — 随机种子，所有 RNG 基于此并存档。
 - `timestamp`: number — 上次保存/模拟的毫秒时间戳。
 - `elapsedOffline`: number — 累计离线毫秒，用于上限控制。
-- `resources`: { `essence`: number, `insight`: number, `research`: number, `reputation`: number }。
+- `resources`: Record<ResourceId, number>（当前包含 essence/insight/research/reputation/herb/ore）。
 - `rates`: { `essencePerSecond`: number } — 可由派生计算得到，存放缓存/上次计算值。
 - `upgrades`: record<string, { level: number, unlocked: boolean }>。
 - `runStats`: { `essenceEarned`: number, `contractsCompleted`: number } — 记录本轮累计获得的精华与完成契约数，用于飞升收益公式。
+- `realm`: { `current`: RealmId, `unlockedTabs`: string[], `unlockedContractIds`: string[], `unlockedResearchIds`: string[], `unlockedRecipeIds`: string[] } — 境界状态与解锁表，境界突破会叠加解锁，飞升后重置回初始境界但保留研究。
 - `contracts`: {
-  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number } }>;
+  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: Partial<Record<ResourceId, number>> }>;
   - `maxSlots`: number;
 }。
 - `research`: { nodes: record<string, { purchased: boolean }> } — 节点一旦购买永久保留，用于施加乘区或解锁槽位。
@@ -26,6 +27,7 @@
 - `COMPLETE_CONTRACT(slotId)` — 结算完成的契约并发放奖励。
 - `BUY_RESEARCH(id)` — 购买研究节点。
 - `ASCEND` — 触发软重置并计算 Insight。
+- `BREAKTHROUGH` — 当满足下一境界条件时，切换至下一境界并应用对应解锁。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()` — 读写存档字符串。
 - `FAST_FORWARD(ms)` — 开发工具，用于模拟时间。
 
@@ -60,8 +62,12 @@
   - 派生：更新可用动作列表、rates、契约生成参数，必要时扩展契约槽位。
 - `ASCEND`
   - 前置：满足 Ascend 阈值（如累计 Essence 或契约评分）；不在离线结算中触发。
-  - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级与研究点余额，保留研究解锁，runs +1。
-  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates，并按研究加成生成契约槽位。
+  - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级与研究点余额，保留研究解锁，runs +1；境界重置至初始阶段并按默认解锁刷新。
+  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates，并按研究加成生成契约槽位与解锁表。
+- `BREAKTHROUGH`
+  - 前置：存在下一境界且满足突破条件（如 essenceEarned / contractsCompleted / reputation）。
+  - 变更：更新 `realm.current`，叠加对应解锁（Tab/契约/研究/配方等）。
+  - 派生：刷新可见 Tab 列表、研究/契约可购买列表；保持确定性，不重置 runStats。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()`
   - 前置：payload 需通过 schemaVersion 校验和签名/校验（若有）。
   - 变更：导入时替换 GameState 并运行迁移；导出时序列化当前 GameState。

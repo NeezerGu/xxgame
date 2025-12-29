@@ -192,6 +192,38 @@
         "essence": 130,
         "reputation": 12
       }
+    },
+    {
+      "id": "herb-gathering",
+      "nameKey": "contracts.herbGathering.name",
+      "descriptionKey": "contracts.herbGathering.description",
+      "durationMs": 35000,
+      "requiredReputation": 15,
+      "tier": 2,
+      "acceptCostEssence": 10,
+      "requiredEssencePerSecond": 1.5,
+      "reward": {
+        "research": 8,
+        "essence": 25,
+        "herb": 15,
+        "reputation": 3
+      }
+    },
+    {
+      "id": "ore-survey",
+      "nameKey": "contracts.oreSurvey.name",
+      "descriptionKey": "contracts.oreSurvey.description",
+      "durationMs": 42000,
+      "requiredReputation": 25,
+      "tier": 3,
+      "acceptCostEssence": 18,
+      "requiredEssencePerSecond": 2,
+      "reward": {
+        "research": 12,
+        "essence": 35,
+        "ore": 10,
+        "reputation": 4
+      }
     }
   ]
 }

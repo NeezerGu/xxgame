@@ -1,6 +1,7 @@
 import { resetState } from "./state";
 import type { GameState } from "./types";
 import { INSIGHT_GAIN_A, INSIGHT_GAIN_B, INSIGHT_GAIN_C } from "./data/constants";
+import { getResource } from "./resources";
 
 export const ASCEND_THRESHOLD = 1000;
 
@@ -11,7 +12,7 @@ export interface InsightGainBreakdown {
 }
 
 export function canAscend(state: GameState, threshold: number = ASCEND_THRESHOLD): boolean {
-  return state.resources.essence >= threshold;
+  return getResource(state.resources, "essence") >= threshold;
 }
 
 export function calculateInsightGain(
@@ -44,7 +45,7 @@ export function ascend(state: GameState, threshold: number = ASCEND_THRESHOLD): 
     ...reset,
     resources: {
       ...reset.resources,
-      insight: state.resources.insight + gain
+      insight: getResource(reset.resources, "insight") + gain
     }
   };
 }

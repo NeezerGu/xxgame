@@ -4,6 +4,8 @@ import { calculateProduction } from "./state";
 import type { Action, GameState } from "./types";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
+import { breakthrough } from "./progressionRealm";
+import { addResources, getResource } from "./resources";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -16,15 +18,12 @@ export function tick(state: GameState, dtMs: number): GameState {
   const perSecond = state.production.perSecond;
   const deltaSeconds = dtMs / 1000;
   const deltaEssence = perSecond * deltaSeconds;
-  const nextEssence = state.resources.essence + deltaEssence;
+  const nextResources = addResources(state.resources, { essence: deltaEssence });
   const researchModifiers = getResearchModifiers(state);
 
   const withResources: GameState = {
     ...state,
-    resources: {
-      ...state.resources,
-      essence: nextEssence
-    },
+    resources: nextResources,
     runStats: {
       ...state.runStats,
       essenceEarned: state.runStats.essenceEarned + deltaEssence
@@ -43,10 +42,7 @@ export function applyAction(state: GameState, action: Action): GameState {
 
       return {
         ...state,
-        resources: {
-          ...state.resources,
-          essence: state.resources.essence + FOCUS_GAIN
-        },
+        resources: addResources(state.resources, { essence: FOCUS_GAIN }),
         runStats: {
           ...state.runStats,
           essenceEarned: state.runStats.essenceEarned + FOCUS_GAIN
@@ -59,7 +55,7 @@ export function applyAction(state: GameState, action: Action): GameState {
       const currentLevel = state.upgrades[upgradeDef.id] ?? 0;
       const cost = getUpgradeCost(upgradeDef, currentLevel);
 
-      if (state.resources.essence < cost) {
+      if (getResource(state.resources, "essence") < cost) {
         return state;
       }
 
@@ -69,16 +65,16 @@ export function applyAction(state: GameState, action: Action): GameState {
       } as GameState["upgrades"];
       const updated = {
         ...state,
-        resources: {
-          ...state.resources,
-          essence: state.resources.essence - cost
-        },
+        resources: addResources(state.resources, { essence: -cost }),
         upgrades: newUpgrades
       };
       return calculateProduction(updated);
     }
     case "ascend": {
       return calculateProduction(ascend(state));
+    }
+    case "breakthrough": {
+      return calculateProduction(breakthrough(state));
     }
     case "acceptContract": {
       return acceptContract(state, action.contractId);
