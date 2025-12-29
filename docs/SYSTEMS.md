@@ -13,6 +13,8 @@
 - `equipmentInventory`: { `items`: Record<instanceId, { blueprintId, slot, rarity, affixes: Array<{ affixId, value }> }>, `nextId`: number } — 装备背包，实例化后的装备记录稀有度与词缀数值。
 - `equipped`: Record<EquipmentSlot, string | null> — 每个槽位当前穿戴的装备实例 ID。
 - `forgingQueue`: { `active`: null | { blueprintId, remainingMs, totalMs, rarity, affixes }, `lastFinished`: EquipmentInstance | null } — 炼器队列，当前只允许单任务，完成后产物写入背包并记录最近完成的装备以供展示。
+- `disciples`: { `roster`: Array<{ id, archetypeId, aptitude, role }>, `nextId`: number, `nextArchetypeIndex`: number } — 弟子 roster，原型与岗位确定性生成，可分配岗位带来自动化或被动收益。
+- `automation`: { `autoClaimContracts`: boolean, `autoAcceptContracts`: boolean } — 自动化开关，由弟子岗位决定。
 - `contracts`: {
   - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: Partial<Record<ResourceId, number>> }>;
   - `maxSlots`: number;
@@ -33,6 +35,8 @@
 - `UNEQUIP(slot)` — 卸下槽位上的装备。
 - `START_FORGE(blueprintId)` — 队列空闲且材料足够时开始锻造，立即消耗成本并规划稀有度与词缀。
 - `DISASSEMBLE(instanceId)` — 分解装备实例，移出背包/装备位，并按稀有度倍率返还部分灵矿。
+- `RECRUIT_DISCIPLE` — 消耗资源招募下一位弟子（按原型列表循环且无随机）。
+- `ASSIGN_DISCIPLE_ROLE(discipleId, role|null)` — 为弟子分配岗位，岗位作用于自动化或生产派生。
 - `ASCEND` — 触发软重置并计算 Insight。
 - `BREAKTHROUGH` — 当满足下一境界条件时，切换至下一境界并应用对应解锁。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()` — 读写存档字符串。
@@ -45,8 +49,8 @@
   - 派生：计算初始 rates。
 - `TICK(dtMs)`
   - 前置：dtMs >= 0；使用确定性 tick（例如固定 50ms 步长切片）。
-  - 变更：增加 Essence（考虑升级/研究/Insight 乘区）；推进 active 契约 `elapsedMs`，若达到 duration 切换为 completed 或 failed；更新 `elapsedOffline`（离线模拟时）。
-  - 派生：重新计算 `rates`、Ascend 进度、可用契约池。
+  - 变更：增加 Essence（考虑升级/研究/Insight 乘区）；推进 active 契约 `elapsedMs`，若达到 duration 切换为 completed 或 failed；更新 `elapsedOffline`（离线模拟时）；将炼器进度按乘区推进；若有采集类岗位则被动增加 herb/ore。
+  - 派生：重新计算 `rates`、Ascend 进度、可用契约池；若开启自动化则自动领取完成契约并按评分接取可用契约。
 - `FOCUS`
   - 前置：冷却结束；玩家非自动化状态。
   - 变更：即时增加 Essence，重置冷却计时。
@@ -75,6 +79,14 @@
   - 前置：背包中存在该实例。
   - 变更：移除实例，若已穿戴则清空对应槽位，并返还稀有度倍率的灵矿。
   - 派生：重算装备乘区。
+- `RECRUIT_DISCIPLE`
+  - 前置：资源（Essence 与 Reputation）足够。
+  - 变更：按原型列表循环创建新弟子，写入 roster，扣除成本。
+  - 派生：刷新自动化开关（若岗位提供）。
+- `ASSIGN_DISCIPLE_ROLE`
+  - 前置：目标弟子存在且岗位在可选列表内。
+  - 变更：更新弟子岗位；若岗位为空则移除原岗位。
+  - 派生：刷新自动化开关、岗位派生值（采集、加速等）。
 - `ASCEND`
   - 前置：满足 Ascend 阈值（如累计 Essence 或契约评分）；不在离线结算中触发。
   - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级与研究点余额，保留研究解锁，runs +1；境界重置至初始阶段并按默认解锁刷新。
@@ -97,7 +109,7 @@
 - 产率（当前实现示例）：`perSecond = (base + additive) × upgradeMult × researchMult × equipmentMult × (1 + insight × 0.05)`。
 - 契约完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。研究可提供速度乘区或额外槽位。
 - 契约速度乘区：`speedMultiplier = researchContractMult × equipmentContractMult`，与研究叠乘。
-- 炼器进度：`remainingMs = max(0, remainingMs - dtMs)`；降为 0 时按已规划稀有度与词缀生成装备实例，写入背包并更新 lastFinished。
+- 炼器进度：`remainingMs = max(0, remainingMs - dtMs × forgeSpeedMult)`；降为 0 时按已规划稀有度与词缀生成装备实例，写入背包并更新 lastFinished。
 - RNG：`nextRandom(seed)` 纯函数更新种子；稀有度按权重抽取（common/uncommon/rare/epic），词缀数量随稀有度变化，词缀数值在定义的 min/max 范围线性插值。相同 seed + 相同动作序列产物完全一致。
 - Ascend 预览：基于当前/累计指标计算，下行取整以防止浮点误差。
 - 离线模拟：`effectiveOffline = min(now - timestamp, offlineCapMs)`；按固定 tick 封顶迭代调用 TICK，避免一次性大步长偏差。

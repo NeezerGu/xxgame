@@ -29,28 +29,8 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
   }
 
   const slot = state.contracts.slots[slotIndex];
-  const activeSlots = state.contracts.slots.filter((s) => s.status === "active").length;
   const def = findContractDefinition(contractId);
-  const requiredReputation = def.requiredReputation ?? 0;
-  const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
-  const acceptCostEssence = def.acceptCostEssence ?? 0;
-
-  if (!state.realm.unlockedContractIds.includes(contractId)) {
-    return state;
-  }
-  if (getResource(state.resources, "reputation") < requiredReputation) {
-    return state;
-  }
-  if (state.production.perSecond < requiredEssencePerSecond) {
-    return state;
-  }
-  if (getResource(state.resources, "essence") < acceptCostEssence) {
-    return state;
-  }
-  if (activeSlots >= state.contracts.maxSlots) {
-    return state;
-  }
-  if (slot.status !== "idle") {
+  if (!canAcceptContract(state, contractId)) {
     return state;
   }
 
@@ -62,9 +42,43 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
 
   return {
     ...state,
-    resources: spendResources(state.resources, { essence: acceptCostEssence }),
+    resources: spendResources(state.resources, { essence: def.acceptCostEssence ?? 0 }),
     contracts: replaceSlot(state.contracts, slotIndex, updatedSlot)
   };
+}
+
+export function canAcceptContract(state: GameState, contractId: ContractId): boolean {
+  const slotIndex = state.contracts.slots.findIndex((slot) => slot.id === contractId);
+  if (slotIndex === -1) {
+    return false;
+  }
+  const slot = state.contracts.slots[slotIndex];
+  const activeSlots = state.contracts.slots.filter((s) => s.status === "active").length;
+  const def = findContractDefinition(contractId);
+  const requiredReputation = def.requiredReputation ?? 0;
+  const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
+  const acceptCostEssence = def.acceptCostEssence ?? 0;
+
+  if (!state.realm.unlockedContractIds.includes(contractId)) {
+    return false;
+  }
+  if (getResource(state.resources, "reputation") < requiredReputation) {
+    return false;
+  }
+  if (state.production.perSecond < requiredEssencePerSecond) {
+    return false;
+  }
+  if (getResource(state.resources, "essence") < acceptCostEssence) {
+    return false;
+  }
+  if (activeSlots >= state.contracts.maxSlots) {
+    return false;
+  }
+  if (slot.status !== "idle") {
+    return false;
+  }
+
+  return true;
 }
 
 export function progressContracts(state: GameState, dtMs: number, contractSpeedMult: number = 1): GameState {

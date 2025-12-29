@@ -69,7 +69,7 @@ export function startForging(state, blueprintId) {
         }
     };
 }
-export function progressForging(state, dtMs) {
+export function progressForging(state, dtMs, speedMult = 1) {
     const queue = state.forgingQueue ?? createEmptyForgingQueue();
     const active = queue.active;
     if (!active || dtMs <= 0) {
@@ -81,7 +81,7 @@ export function progressForging(state, dtMs) {
         }
         return state;
     }
-    const nextRemaining = Math.max(0, active.remainingMs - dtMs);
+    const nextRemaining = Math.max(0, active.remainingMs - dtMs * speedMult);
     if (nextRemaining > 0) {
         return {
             ...state,

@@ -7,28 +7,32 @@ import { breakthrough } from "./progressionRealm";
 import { addResources, getResource } from "./resources";
 import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
 import { disassembleItem, progressForging, startForging } from "./forging";
+import { applyDiscipleGathering, assignDiscipleRole, getDiscipleModifiers, recruitDisciple, runDiscipleAutomation } from "./disciples";
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
 export function tick(state, dtMs) {
     if (dtMs <= 0) {
         return state;
     }
-    const progressed = progressForging(state, dtMs);
-    const perSecond = progressed.production.perSecond;
+    const discipleModifiers = getDiscipleModifiers(state);
+    const progressed = progressForging(state, dtMs, discipleModifiers.forgingSpeedMult);
+    const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
+    const perSecond = withGathering.production.perSecond;
     const deltaSeconds = dtMs / 1000;
     const deltaEssence = perSecond * deltaSeconds;
-    const nextResources = addResources(progressed.resources, { essence: deltaEssence });
-    const researchModifiers = getResearchModifiers(progressed);
-    const equipmentModifiers = getEquipmentModifiers(progressed);
+    const nextResources = addResources(withGathering.resources, { essence: deltaEssence });
+    const researchModifiers = getResearchModifiers(withGathering);
+    const equipmentModifiers = getEquipmentModifiers(withGathering);
     const withResources = {
-        ...progressed,
+        ...withGathering,
         resources: nextResources,
         runStats: {
-            ...progressed.runStats,
-            essenceEarned: progressed.runStats.essenceEarned + deltaEssence
+            ...withGathering.runStats,
+            essenceEarned: withGathering.runStats.essenceEarned + deltaEssence
         }
     };
-    return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult);
+    const progressedContracts = progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult);
+    return runDiscipleAutomation(progressedContracts, discipleModifiers);
 }
 export function applyAction(state, action) {
     switch (action.type) {
@@ -100,6 +104,12 @@ export function applyAction(state, action) {
                 return state;
             }
             return calculateProduction(updated);
+        }
+        case "recruitDisciple": {
+            return recruitDisciple(state);
+        }
+        case "assignDiscipleRole": {
+            return assignDiscipleRole(state, action.discipleId, action.role);
         }
         default: {
             return state;

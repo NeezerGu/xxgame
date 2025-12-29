@@ -27,6 +27,22 @@
 | herb-gathering | 35 | 25 | 0 | 8 | 3 | 15 | 0 | 1.5 | 15 |
 | ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
+## 弟子原型
+| ID | Base Aptitude | Allowed Roles | Name Key | Description Key |
+| --- | --- | --- | --- | --- |
+| ledger-adept | 0.18 | contractClerk, gatherer | disciples.archetype.ledgerAdept.name | disciples.archetype.ledgerAdept.description |
+| furnace-attune | 0.2 | smith, alchemist | disciples.archetype.furnaceAttune.name | disciples.archetype.furnaceAttune.description |
+| grove-runner | 0.16 | gatherer, contractClerk | disciples.archetype.groveRunner.name | disciples.archetype.groveRunner.description |
+| array-scribe | 0.14 | contractClerk, alchemist | disciples.archetype.arrayScribe.name | disciples.archetype.arrayScribe.description |
+
+## 弟子岗位效果
+| Role | Auto Claim | Auto Accept | Forge Speed/apt | Alchemy Speed/apt | Herb/s/apt | Ore/s/apt |
+| --- | --- | --- | --- | --- | --- | --- |
+| contractClerk | yes | yes | 0 | 0 | 0 | 0 |
+| alchemist | - | - | 0 | 0.15 | 0 | 0 |
+| smith | - | - | 0.15 | 0 | 0 | 0 |
+| gatherer | - | - | 0 | 0 | 0.05 | 0.04 |
+
 ## 装备蓝图
 | ID | Slot | Base Power | Forge Time(ms) | Cost Essence | Cost Ore | Name Key | Description Key |
 | --- | --- | --- | --- | --- | --- | --- | --- |

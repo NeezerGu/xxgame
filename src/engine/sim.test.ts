@@ -7,6 +7,8 @@ import { calculateProduction } from "./state";
 import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { getInitialRealmId } from "./progressionRealm";
+import { DISCIPLE_RECRUIT_COST } from "./data/disciples";
+import type { GameState } from "./types";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -92,6 +94,58 @@ describe("run stats tracking", () => {
 
     expect(claimed.runStats.contractsCompleted).toBe(1);
     expect(claimed.runStats.essenceEarned).toBeCloseTo(progressed.runStats.essenceEarned + 15);
+  });
+});
+
+describe("disciples", () => {
+  it("recruits disciples in order using resources", () => {
+    const base = createInitialState(0);
+    const funded = {
+      ...base,
+      resources: { ...base.resources, essence: base.resources.essence + 500, reputation: 50 }
+    };
+    const first = applyAction(funded, { type: "recruitDisciple" });
+    expect(first.resources.essence).toBeCloseTo(funded.resources.essence - DISCIPLE_RECRUIT_COST.essence);
+    expect(first.resources.reputation).toBeCloseTo(funded.resources.reputation - DISCIPLE_RECRUIT_COST.reputation);
+    expect(first.disciples.roster).toHaveLength(1);
+
+    const second = applyAction(first, { type: "recruitDisciple" });
+    expect(second.disciples.roster).toHaveLength(2);
+    expect(second.disciples.roster[0].archetypeId).not.toBe(second.disciples.roster[1].archetypeId);
+  });
+
+  it("applies gatherer income and contract clerk automation during tick", () => {
+    const base = createInitialState(0);
+    const clerk: GameState["disciples"]["roster"][number] = {
+      id: "d1",
+      archetypeId: "ledger-adept",
+      aptitude: 1,
+      role: "contractClerk"
+    };
+    const gatherer: GameState["disciples"]["roster"][number] = {
+      id: "d2",
+      archetypeId: "grove-runner",
+      aptitude: 1,
+      role: "gatherer"
+    };
+    const slotIndex = base.contracts.slots.findIndex((slot) => slot.id === "starter-recon");
+    const slots = base.contracts.slots.slice();
+    slots[slotIndex] = { ...slots[slotIndex], status: "completed" as const };
+    const prepared: GameState = {
+      ...base,
+      resources: { ...base.resources, essence: 50, reputation: 20, herb: 0, ore: 0 },
+      production: { ...base.production, perSecond: 2, basePerSecond: 2 },
+      disciples: { ...base.disciples, roster: [clerk, gatherer] },
+      automation: { autoAcceptContracts: true, autoClaimContracts: true },
+      contracts: { ...base.contracts, slots }
+    };
+
+    const progressed = tick(prepared, 1000);
+
+    expect(progressed.resources.herb).toBeGreaterThan(prepared.resources.herb);
+    expect(progressed.resources.ore).toBeGreaterThan(prepared.resources.ore);
+    expect(progressed.runStats.contractsCompleted).toBe(prepared.runStats.contractsCompleted + 1);
+    expect(progressed.contracts.slots.some((slot) => slot.status === "active")).toBe(true);
   });
 });
 

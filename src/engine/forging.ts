@@ -78,7 +78,7 @@ export function startForging(state: GameState, blueprintId: EquipmentBlueprintId
   };
 }
 
-export function progressForging(state: GameState, dtMs: number): GameState {
+export function progressForging(state: GameState, dtMs: number, speedMult: number = 1): GameState {
   const queue = state.forgingQueue ?? createEmptyForgingQueue();
   const active = queue.active;
   if (!active || dtMs <= 0) {
@@ -91,7 +91,7 @@ export function progressForging(state: GameState, dtMs: number): GameState {
     return state;
   }
 
-  const nextRemaining = Math.max(0, active.remainingMs - dtMs);
+  const nextRemaining = Math.max(0, active.remainingMs - dtMs * speedMult);
   if (nextRemaining > 0) {
     return {
       ...state,

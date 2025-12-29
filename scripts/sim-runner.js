@@ -113,7 +113,8 @@ function snapshotState(state, totals, elapsedMs) {
     reputation: state.resources.reputation,
     researchPoints: state.resources.research,
     contractsActive: state.contracts.slots.filter((slot) => slot.status === "active").length,
-    contractsCompletedTotal: totals.contractsCompleted
+    contractsCompletedTotal: totals.contractsCompleted,
+    disciples: state.disciples?.roster.length ?? 0
   };
 }
 
@@ -130,6 +131,7 @@ export async function runSim(userConfig = {}) {
   const { CONTRACT_DEFINITIONS } = await import("../dist/engine/data/contracts.js");
   const { EQUIPMENT_BLUEPRINTS, findEquipmentBlueprint } = await import("../dist/engine/data/equipment.js");
   const { getEquipmentModifiers } = await import("../dist/engine/equipment.js");
+  const { DISCIPLE_RECRUIT_COST, DISCIPLE_ARCHETYPES } = await import("../dist/engine/data/disciples.js");
 
   let state = createInitialState(config.seed);
   const totals = {
@@ -138,7 +140,8 @@ export async function runSim(userConfig = {}) {
     contractsAccepted: 0,
     contractsCompleted: 0,
     upgradesPurchased: 0,
-    researchPurchasedCount: 0
+    researchPurchasedCount: 0,
+    disciplesRecruited: 0
   };
 
   let elapsedMs = 0;
@@ -262,6 +265,39 @@ export async function runSim(userConfig = {}) {
     });
   }
 
+  function canRecruitDisciple() {
+    return (
+      state.resources.essence >= DISCIPLE_RECRUIT_COST.essence &&
+      state.resources.reputation >= (DISCIPLE_RECRUIT_COST.reputation ?? 0)
+    );
+  }
+
+  function assignDiscipleRoles() {
+    const desiredRoles = ["contractClerk", "gatherer", "smith", "alchemist"];
+    const roster = state.disciples?.roster ?? [];
+    desiredRoles.forEach((role) => {
+      const hasRole = roster.some((disciple) => disciple.role === role);
+      if (hasRole) return;
+      const candidate = roster.find((disciple) => {
+        const archetype = DISCIPLE_ARCHETYPES.find((a) => a.id === disciple.archetypeId);
+        return archetype?.rolesAllowed.includes(role);
+      });
+      if (candidate) {
+        state = applyAction(state, { type: "assignDiscipleRole", discipleId: candidate.id, role });
+      }
+    });
+  }
+
+  function recruitDisciplesIfPossible() {
+    while (canRecruitDisciple()) {
+      const next = applyAction(state, { type: "recruitDisciple" });
+      if (next === state) break;
+      totals.disciplesRecruited += 1;
+      state = next;
+      assignDiscipleRoles();
+    }
+  }
+
   function fillContracts() {
     while (true) {
       const active = state.contracts.slots.filter((slot) => slot.status === "active").length;
@@ -303,6 +339,7 @@ export async function runSim(userConfig = {}) {
 
   while (elapsedMs < config.seconds * 1000) {
     completeContracts();
+    recruitDisciplesIfPossible();
     buyResearchIfPossible();
     attemptBreakthrough();
     tryAscend();
@@ -337,7 +374,8 @@ export async function runSim(userConfig = {}) {
       contractsAccepted: totals.contractsAccepted,
       contractsCompleted: totals.contractsCompleted,
       upgradesPurchased: totals.upgradesPurchased,
-      researchPurchasedCount: totals.researchPurchasedCount
+      researchPurchasedCount: totals.researchPurchasedCount,
+      disciplesRecruited: totals.disciplesRecruited
     },
     final: {
       resources: state.resources,
@@ -346,7 +384,9 @@ export async function runSim(userConfig = {}) {
       researchPoints: state.resources.research,
       insight: state.resources.insight,
       essence: state.resources.essence,
-      runStats: state.runStats
+      runStats: state.runStats,
+      disciples: state.disciples,
+      automation: state.automation
     },
     purchasedResearch,
     upgradesLevels: state.upgrades

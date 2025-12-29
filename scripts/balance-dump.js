@@ -64,6 +64,7 @@ async function main() {
     FORGING_AFFIX_COUNT,
     DISASSEMBLE_REFUND_MULTIPLIER
   } = await loadModule("data/equipment.js");
+  const { DISCIPLE_ARCHETYPES, DISCIPLE_RECRUIT_COST, DISCIPLE_ROLE_EFFECTS } = await loadModule("data/disciples.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
   const { RESOURCE_IDS } = await loadModule("resources.js");
@@ -87,7 +88,12 @@ async function main() {
     equipmentAffixes: AFFIX_DEFINITIONS,
     forgingRarityWeights: FORGING_RARITY_WEIGHTS,
     forgingAffixCount: FORGING_AFFIX_COUNT,
-    disassembleRefundMultiplier: DISASSEMBLE_REFUND_MULTIPLIER
+    disassembleRefundMultiplier: DISASSEMBLE_REFUND_MULTIPLIER,
+    disciples: {
+      archetypes: DISCIPLE_ARCHETYPES,
+      recruitCost: DISCIPLE_RECRUIT_COST,
+      roleEffects: DISCIPLE_ROLE_EFFECTS
+    }
   };
 
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -140,6 +146,22 @@ async function main() {
     c.requiredEssencePerSecond ?? 0,
     c.requiredReputation ?? 0
   ]);
+  const discipleRows = DISCIPLE_ARCHETYPES.map((d) => [
+    d.id,
+    d.baseAptitude,
+    d.rolesAllowed.join(", "),
+    d.nameKey,
+    d.descriptionKey
+  ]);
+  const discipleEffectRows = Object.entries(DISCIPLE_ROLE_EFFECTS).map(([role, effect]) => [
+    role,
+    effect.autoClaim ? "yes" : "-",
+    effect.autoAccept ? "yes" : "-",
+    effect.forgingSpeedPerAptitude ?? 0,
+    effect.alchemySpeedPerAptitude ?? 0,
+    effect.herbPerSecondPerAptitude ?? 0,
+    effect.orePerSecondPerAptitude ?? 0
+  ]);
   const constantsRows = Object.entries(balanceJson.constants).map(([key, value]) => [key, value]);
 
   const mdSections = [
@@ -156,6 +178,13 @@ async function main() {
     renderTable(
       ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],
       contractRows
+    ),
+    "## 弟子原型",
+    renderTable(["ID", "Base Aptitude", "Allowed Roles", "Name Key", "Description Key"], discipleRows),
+    "## 弟子岗位效果",
+    renderTable(
+      ["Role", "Auto Claim", "Auto Accept", "Forge Speed/apt", "Alchemy Speed/apt", "Herb/s/apt", "Ore/s/apt"],
+      discipleEffectRows
     ),
     "## 装备蓝图",
     renderTable(

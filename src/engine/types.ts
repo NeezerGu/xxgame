@@ -1,4 +1,5 @@
 import type { ContractId } from "./data/contracts";
+import type { DiscipleArchetypeId, DiscipleRole } from "./data/disciples";
 import type { UpgradeId } from "./data/upgrades";
 import type { ResearchId } from "./data/research";
 import type { RealmId } from "./data/realms";
@@ -75,6 +76,24 @@ export interface EquipmentInventoryState {
 
 export type EquippedState = Record<EquipmentSlot, string | null>;
 
+export interface DiscipleInstance {
+  id: string;
+  archetypeId: DiscipleArchetypeId;
+  aptitude: number;
+  role: DiscipleRole | null;
+}
+
+export interface DisciplesState {
+  roster: DiscipleInstance[];
+  nextId: number;
+  nextArchetypeIndex: number;
+}
+
+export interface AutomationState {
+  autoClaimContracts: boolean;
+  autoAcceptContracts: boolean;
+}
+
 export interface ForgingTask {
   blueprintId: EquipmentBlueprintId;
   remainingMs: number;
@@ -101,6 +120,8 @@ export interface GameState {
   contracts: ContractsState;
   equipmentInventory: EquipmentInventoryState;
   equipped: EquippedState;
+  disciples: DisciplesState;
+  automation: AutomationState;
   forgingQueue: ForgingQueueState;
 }
 
@@ -115,4 +136,6 @@ export type Action =
   | { type: "equip"; instanceId: string }
   | { type: "unequip"; slot: EquipmentSlot }
   | { type: "startForge"; blueprintId: EquipmentBlueprintId }
-  | { type: "disassemble"; instanceId: string };
+  | { type: "disassemble"; instanceId: string }
+  | { type: "recruitDisciple" }
+  | { type: "assignDiscipleRole"; discipleId: string; role: DiscipleRole | null };

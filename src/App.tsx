@@ -18,6 +18,13 @@ import {
   findAffixDefinition,
   findEquipmentBlueprint
 } from "@engine/data/equipment";
+import {
+  DISCIPLE_RECRUIT_COST,
+  DISCIPLE_ROLE_EFFECTS,
+  findDiscipleArchetype,
+  type DiscipleRole
+} from "@engine/data/disciples";
+import { getDiscipleModifiers } from "@engine/disciples";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -34,9 +41,19 @@ import { OFFLINE_CAP_MS } from "@engine/data/constants";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
-const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "equipment", "forging", "ascend", "dev", "help"];
+const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "equipment", "forging", "disciples", "ascend", "dev", "help"];
 
-type TabKey = "realm" | "contracts" | "upgrades" | "research" | "equipment" | "forging" | "ascend" | "dev" | "help";
+type TabKey =
+  | "realm"
+  | "contracts"
+  | "upgrades"
+  | "research"
+  | "equipment"
+  | "forging"
+  | "disciples"
+  | "ascend"
+  | "dev"
+  | "help";
 type ContractSortMode = "default" | "score";
 const REWARD_DISPLAY_ORDER = ["research", "reputation", "essence", "herb", "ore", "insight"] as const;
 
@@ -108,6 +125,7 @@ function App() {
         { key: "research", label: t("tab.research", undefined, locale) },
         { key: "equipment", label: t("tab.equipment", undefined, locale) },
         { key: "forging", label: t("tab.forging", undefined, locale) },
+        { key: "disciples", label: t("tab.disciples", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
         { key: "dev", label: t("tab.dev", undefined, locale) },
         { key: "help", label: t("tab.help", undefined, locale) }
@@ -250,6 +268,14 @@ function App() {
 
   const handleDisassemble = (instanceId: string) => {
     setGameState((prev) => applyAction(prev, { type: "disassemble", instanceId }));
+  };
+
+  const handleRecruitDisciple = () => {
+    setGameState((prev) => applyAction(prev, { type: "recruitDisciple" }));
+  };
+
+  const handleAssignDiscipleRole = (discipleId: string, role: DiscipleRole | null) => {
+    setGameState((prev) => applyAction(prev, { type: "assignDiscipleRole", discipleId, role }));
   };
 
   const handleImport = () => {
@@ -478,6 +504,22 @@ function App() {
     }),
     [locale]
   );
+  const discipleModifiers = useMemo(() => getDiscipleModifiers(gameState), [gameState]);
+  const discipleRoleLabels = useMemo<Record<DiscipleRole, string>>(
+    () => ({
+      contractClerk: t("disciples.role.contractClerk", undefined, locale),
+      alchemist: t("disciples.role.alchemist", undefined, locale),
+      smith: t("disciples.role.smith", undefined, locale),
+      gatherer: t("disciples.role.gatherer", undefined, locale)
+    }),
+    [locale]
+  );
+  const canRecruitDisciple = useMemo(
+    () =>
+      getResource(gameState.resources, "essence") >= DISCIPLE_RECRUIT_COST.essence &&
+      getResource(gameState.resources, "reputation") >= DISCIPLE_RECRUIT_COST.reputation,
+    [gameState.resources]
+  );
   const forgingBlueprints = useMemo(() => EQUIPMENT_BLUEPRINTS.slice(), []);
   const equipmentModifiers = useMemo(() => getEquipmentModifiers(gameState), [gameState]);
   const forgingQueue = gameState.forgingQueue;
@@ -531,6 +573,50 @@ function App() {
   );
   const formatBasePowerLine = useCallback(
     (basePower: number) => t("equipment.basePowerLine", { value: (basePower * 100).toFixed(1) }, locale),
+    [locale]
+  );
+  const formatDiscipleRoleEffect = useCallback(
+    (role: DiscipleRole | null, aptitude: number) => {
+      if (!role) {
+        return t("disciples.effect.unassigned", undefined, locale);
+      }
+      const effect = DISCIPLE_ROLE_EFFECTS[role];
+      if (!effect) return "";
+      switch (role) {
+        case "contractClerk":
+          return t("disciples.effect.contractClerk", undefined, locale);
+        case "smith": {
+          const smithSpeed = (effect.forgingSpeedPerAptitude ?? 0) * aptitude;
+          return t(
+            "disciples.effect.smith",
+            { value: (smithSpeed * 100).toFixed(1) },
+            locale
+          );
+        }
+        case "alchemist": {
+          const alchemySpeed = (effect.alchemySpeedPerAptitude ?? 0) * aptitude;
+          return t(
+            "disciples.effect.alchemist",
+            { value: (alchemySpeed * 100).toFixed(1) },
+            locale
+          );
+        }
+        case "gatherer": {
+          const herbRate = (effect.herbPerSecondPerAptitude ?? 0) * aptitude;
+          const oreRate = (effect.orePerSecondPerAptitude ?? 0) * aptitude;
+          return t(
+            "disciples.effect.gatherer",
+            {
+              herb: formatCompact(herbRate, { maxDecimals: 2 }),
+              ore: formatCompact(oreRate, { maxDecimals: 2 })
+            },
+            locale
+          );
+        }
+        default:
+          return "";
+      }
+    },
     [locale]
   );
   const glossaryEntries = useMemo(
@@ -1334,6 +1420,127 @@ function App() {
               </div>
             ) : (
               <p className="muted small">{t("forging.none", undefined, locale)}</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "disciples" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("disciples.title", undefined, locale)}</h2>
+              <p className="muted small">{t("disciples.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t(
+                "disciples.recruitCost",
+                {
+                  essence: formatInt(DISCIPLE_RECRUIT_COST.essence, locale),
+                  reputation: formatInt(DISCIPLE_RECRUIT_COST.reputation, locale)
+                },
+                locale
+              )}
+            </div>
+          </div>
+
+          <div className="reputation-summary">
+            <div className="muted small">
+              {t(
+                "disciples.automation.claim",
+                {
+                  status: discipleModifiers.autoClaimContracts
+                    ? t("disciples.automation.enabled", undefined, locale)
+                    : t("disciples.automation.disabled", undefined, locale)
+                },
+                locale
+              )}
+            </div>
+            <div className="muted small">
+              {t(
+                "disciples.automation.accept",
+                {
+                  status: discipleModifiers.autoAcceptContracts
+                    ? t("disciples.automation.enabled", undefined, locale)
+                    : t("disciples.automation.disabled", undefined, locale)
+                },
+                locale
+              )}
+            </div>
+            <div className="muted small">
+              {t(
+                "disciples.gathering",
+                {
+                  herb: formatCompact(discipleModifiers.herbPerSecond, { maxDecimals: 2 }),
+                  ore: formatCompact(discipleModifiers.orePerSecond, { maxDecimals: 2 })
+                },
+                locale
+              )}
+            </div>
+          </div>
+
+          <div className="upgrade-actions" style={{ marginTop: "8px" }}>
+            <button className="action-button" onClick={handleRecruitDisciple} disabled={!canRecruitDisciple}>
+              {t("disciples.recruit", undefined, locale)}
+            </button>
+            {!canRecruitDisciple ? (
+              <div className="muted small warning">
+                {t("disciples.recruitBlocked", undefined, locale)}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="help-section">
+            <h3>{t("disciples.rosterTitle", undefined, locale)}</h3>
+            {gameState.disciples.roster.length === 0 ? (
+              <p className="muted small">{t("disciples.empty", undefined, locale)}</p>
+            ) : (
+              <div className="contract-list">
+                {gameState.disciples.roster.map((disciple) => {
+                  const archetype = findDiscipleArchetype(disciple.archetypeId);
+                  const allowedRolesLabel = archetype.rolesAllowed.map((role) => discipleRoleLabels[role]).join(" / ");
+                  return (
+                    <div className="contract-row" key={disciple.id}>
+                      <div className="contract-info">
+                        <div className="contract-title">
+                          <strong>{t(archetype.nameKey as MessageKey, undefined, locale)}</strong>
+                          <span className={`status-pill ${disciple.role ? "status-active" : "status-idle"}`}>
+                            {disciple.role ? discipleRoleLabels[disciple.role] : t("disciples.unassigned", undefined, locale)}
+                          </span>
+                        </div>
+                        <p className="muted">{t(archetype.descriptionKey as MessageKey, undefined, locale)}</p>
+                        <div className="muted small">
+                          {t("disciples.aptitude", { value: (disciple.aptitude * 100).toFixed(1) }, locale)}
+                        </div>
+                        <div className="muted small">
+                          {t("disciples.allowedRoles", { roles: allowedRolesLabel }, locale)}
+                        </div>
+                        <div className="muted small">{formatDiscipleRoleEffect(disciple.role, disciple.aptitude)}</div>
+                      </div>
+                      <div className="contract-actions">
+                        <label className="muted small" style={{ display: "block" }}>
+                          {t("disciples.assignRole", undefined, locale)}
+                          <select
+                            value={disciple.role ?? ""}
+                            onChange={(event) => {
+                              const role = event.target.value as DiscipleRole | "";
+                              handleAssignDiscipleRole(disciple.id, role === "" ? null : (role as DiscipleRole));
+                            }}
+                            style={{ marginLeft: "4px" }}
+                          >
+                            <option value="">{t("disciples.role.none", undefined, locale)}</option>
+                            {archetype.rolesAllowed.map((role) => (
+                              <option key={role} value={role}>
+                                {discipleRoleLabels[role]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </section>

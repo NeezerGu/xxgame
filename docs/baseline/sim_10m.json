@@ -14,28 +14,51 @@
     "totals": {
       "ascends": 51,
       "insightGained": 639,
-      "contractsAccepted": 217,
-      "contractsCompleted": 60,
-      "upgradesPurchased": 2360,
-      "researchPurchasedCount": 3
+      "contractsAccepted": 70,
+      "contractsCompleted": 15,
+      "upgradesPurchased": 2344,
+      "researchPurchasedCount": 3,
+      "disciplesRecruited": 2
     },
     "final": {
       "resources": {
-        "essence": 34.28003062500018,
+        "essence": 8.931194062500014,
         "insight": 639,
         "research": 0,
         "reputation": 0,
         "herb": 0,
         "ore": 0
       },
-      "productionPerSecond": 629.3717718750001,
+      "productionPerSecond": 119.88033750000002,
       "reputation": 0,
       "researchPoints": 0,
       "insight": 639,
-      "essence": 34.28003062500018,
+      "essence": 8.931194062500014,
       "runStats": {
-        "essenceEarned": 721.2800306250001,
+        "essenceEarned": 68.93119406250003,
         "contractsCompleted": 0
+      },
+      "disciples": {
+        "roster": [
+          {
+            "id": "1",
+            "archetypeId": "ledger-adept",
+            "aptitude": 0.18,
+            "role": "contractClerk"
+          },
+          {
+            "id": "2",
+            "archetypeId": "furnace-attune",
+            "aptitude": 0.2,
+            "role": "alchemist"
+          }
+        ],
+        "nextId": 3,
+        "nextArchetypeIndex": 2
+      },
+      "automation": {
+        "autoAcceptContracts": true,
+        "autoClaimContracts": true
       }
     },
     "purchasedResearch": [
@@ -44,8 +67,8 @@
       "extraContractSlot"
     ],
     "upgradesLevels": {
-      "spark": 19,
-      "amplify": 1
+      "spark": 4,
+      "amplify": 0
     }
   },
   "timeline": [
@@ -57,7 +80,8 @@
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 0,
-      "contractsCompletedTotal": 0
+      "contractsCompletedTotal": 0,
+      "disciples": 0
     },
     {
       "tSec": 10,
@@ -67,7 +91,8 @@
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 1,
-      "contractsCompletedTotal": 0
+      "contractsCompletedTotal": 0,
+      "disciples": 0
     },
     {
       "tSec": 20,
@@ -77,7 +102,8 @@
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 2,
-      "contractsCompletedTotal": 1
+      "contractsCompletedTotal": 1,
+      "disciples": 0
     },
     {
       "tSec": 30,
@@ -87,7 +113,8 @@
       "reputation": 4,
       "researchPoints": 3,
       "contractsActive": 3,
-      "contractsCompletedTotal": 4
+      "contractsCompletedTotal": 4,
+      "disciples": 0
     },
     {
       "tSec": 40,
@@ -97,7 +124,8 @@
       "reputation": 7,
       "researchPoints": 2,
       "contractsActive": 2,
-      "contractsCompletedTotal": 6
+      "contractsCompletedTotal": 6,
+      "disciples": 0
     },
     {
       "tSec": 50,
@@ -107,7 +135,8 @@
       "reputation": 9,
       "researchPoints": 7,
       "contractsActive": 3,
-      "contractsCompletedTotal": 8
+      "contractsCompletedTotal": 8,
+      "disciples": 0
     },
     {
       "tSec": 60,
@@ -117,547 +146,602 @@
       "reputation": 11,
       "researchPoints": 0,
       "contractsActive": 4,
-      "contractsCompletedTotal": 10
+      "contractsCompletedTotal": 10,
+      "disciples": 0
     },
     {
       "tSec": 70,
-      "essence": 13.719835937500168,
-      "eps": 67.535015625,
+      "essence": 58.76163984375017,
+      "eps": 42.976828125000004,
       "insight": 0,
-      "reputation": 13,
+      "reputation": 3,
       "researchPoints": 7,
       "contractsActive": 4,
-      "contractsCompletedTotal": 11
+      "contractsCompletedTotal": 11,
+      "disciples": 1
     },
     {
       "tSec": 80,
-      "essence": 27.17301228027381,
-      "eps": 450.6811127929688,
+      "essence": 29.039256933593975,
+      "eps": 279.7331044921876,
       "insight": 0,
-      "reputation": 18,
-      "researchPoints": 26,
+      "reputation": 9,
+      "researchPoints": 28,
       "contractsActive": 4,
-      "contractsCompletedTotal": 13
+      "contractsCompletedTotal": 14,
+      "disciples": 1
     },
     {
       "tSec": 90,
-      "essence": 1.0466768750000062,
+      "essence": 3.8257881249999977,
       "eps": 2.4861375,
       "insight": 21,
       "reputation": 0,
       "researchPoints": 0,
-      "contractsActive": 3,
-      "contractsCompletedTotal": 14
+      "contractsActive": 2,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 100,
-      "essence": 9.92261718750002,
-      "eps": 8.70148125,
+      "essence": 7.8925753125000035,
+      "eps": 7.4584125,
       "insight": 21,
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 15
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 110,
-      "essence": 6.06198375000004,
-      "eps": 18.64603125,
+      "essence": 26.702222812500043,
+      "eps": 16.15989375,
       "insight": 21,
-      "reputation": 4,
-      "researchPoints": 9,
+      "reputation": 3,
+      "researchPoints": 7,
       "contractsActive": 3,
-      "contractsCompletedTotal": 18
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 120,
-      "essence": 35.88913140625006,
-      "eps": 55.93809374999999,
+      "essence": 18.01294390625006,
+      "eps": 50.344284374999994,
       "insight": 21,
-      "reputation": 8,
-      "researchPoints": 21,
+      "reputation": 7,
+      "researchPoints": 18,
       "contractsActive": 3,
-      "contractsCompletedTotal": 21
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 130,
-      "essence": 388.6654736734013,
-      "eps": 3655.7620093322753,
+      "essence": 39.79057976074246,
+      "eps": 594.6918591796876,
       "insight": 21,
       "reputation": 9,
       "researchPoints": 23,
       "contractsActive": 3,
-      "contractsCompletedTotal": 22
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 140,
-      "essence": 12.022306250000007,
-      "eps": 9.095625,
+      "essence": 4.195918750000007,
+      "eps": 5.457375000000001,
       "insight": 40,
-      "reputation": 1,
-      "researchPoints": 2,
+      "reputation": 0,
+      "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 23
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 150,
-      "essence": 30.020056250000003,
-      "eps": 25.467750000000002,
+      "essence": 8.81168750000001,
+      "eps": 21.829500000000003,
       "insight": 40,
-      "reputation": 3,
-      "researchPoints": 7,
+      "reputation": 2,
+      "researchPoints": 4,
       "contractsActive": 3,
-      "contractsCompletedTotal": 25
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 160,
-      "essence": 68.40030312500002,
-      "eps": 122.79093750000001,
+      "essence": 40.215453124999996,
+      "eps": 51.845062500000004,
       "insight": 40,
-      "reputation": 6,
-      "researchPoints": 16,
+      "reputation": 4,
+      "researchPoints": 9,
       "contractsActive": 3,
-      "contractsCompletedTotal": 27
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 170,
-      "essence": 3.526750625000002,
+      "essence": 1.4669893750000007,
       "eps": 4.7903625000000005,
       "insight": 59,
       "reputation": 0,
       "researchPoints": 0,
-      "contractsActive": 3,
-      "contractsCompletedTotal": 29
+      "contractsActive": 2,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 180,
-      "essence": 19.914252500000018,
-      "eps": 26.346993750000003,
+      "essence": 14.65737375000001,
+      "eps": 21.556631250000002,
       "insight": 59,
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 30
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 190,
-      "essence": 11.6026216406251,
-      "eps": 161.67473437500004,
+      "essence": 13.730710625000063,
+      "eps": 68.26266562500001,
       "insight": 59,
       "reputation": 3,
       "researchPoints": 7,
       "contractsActive": 3,
-      "contractsCompletedTotal": 32
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 200,
-      "essence": 5.9604699999999955,
-      "eps": 8.731800000000002,
+      "essence": 1.8440599999999983,
+      "eps": 5.821200000000001,
       "insight": 76,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 34
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 210,
-      "essence": 17.89576000000005,
-      "eps": 43.659000000000006,
+      "essence": 5.4883600000000365,
+      "eps": 37.83780000000001,
       "insight": 76,
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 35
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 220,
-      "essence": 2.3557668750000005,
-      "eps": 6.730762500000001,
-      "insight": 91,
-      "reputation": 0,
-      "researchPoints": 0,
-      "contractsActive": 1,
-      "contractsCompletedTotal": 38
+      "essence": 67.00676000000033,
+      "eps": 574.6615875000001,
+      "insight": 76,
+      "reputation": 3,
+      "researchPoints": 7,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 230,
-      "essence": 11.216165937500024,
-      "eps": 40.384575000000005,
+      "essence": 10.682585625000005,
+      "eps": 30.288431250000002,
       "insight": 91,
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 39
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 240,
-      "essence": 114.55536378906274,
-      "eps": 996.6786908203126,
+      "essence": 36.507021992187646,
+      "eps": 238.52139609375,
       "insight": 91,
       "reputation": 3,
       "researchPoints": 7,
       "contractsActive": 3,
-      "contractsCompletedTotal": 41
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 250,
-      "essence": 4.703335625000046,
-      "eps": 42.35529375000001,
+      "essence": 3.549817500000021,
+      "eps": 26.953368750000006,
       "insight": 107,
-      "reputation": 1,
-      "researchPoints": 2,
+      "reputation": 0,
+      "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 42
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 260,
-      "essence": 67.594657280274,
-      "eps": 1271.9222516601567,
+      "essence": 41.57287113281265,
+      "eps": 272.90285859375007,
       "insight": 107,
-      "reputation": 3,
-      "researchPoints": 7,
+      "reputation": 2,
+      "researchPoints": 4,
       "contractsActive": 3,
-      "contractsCompletedTotal": 44
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 270,
-      "essence": 20.64470312500006,
-      "eps": 55.968412500000014,
+      "essence": 9.977876250000035,
+      "eps": 38.74736250000001,
       "insight": 122,
-      "reputation": 1,
-      "researchPoints": 2,
+      "reputation": 0,
+      "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 45
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 280,
-      "essence": 7.376113750000006,
-      "eps": 9.520087500000002,
-      "insight": 137,
-      "reputation": 0,
-      "researchPoints": 0,
-      "contractsActive": 2,
-      "contractsCompletedTotal": 47
+      "essence": 277.90789178711003,
+      "eps": 2206.7833798828133,
+      "insight": 122,
+      "reputation": 3,
+      "researchPoints": 7,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 290,
-      "essence": 8.171367343750148,
-      "eps": 128.52118125000004,
+      "essence": 19.0766753125001,
+      "eps": 71.40065625000003,
       "insight": 137,
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 48
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 300,
-      "essence": 13.24547687500001,
-      "eps": 41.47605000000001,
+      "essence": 6.439148750000002,
+      "eps": 20.738025000000004,
       "insight": 151,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 48
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 310,
-      "essence": 2.8101100000000026,
-      "eps": 11.157300000000003,
-      "insight": 164,
-      "reputation": 0,
-      "researchPoints": 0,
-      "contractsActive": 2,
-      "contractsCompletedTotal": 49
+      "essence": 75.76183626953159,
+      "eps": 656.1640722656252,
+      "insight": 151,
+      "reputation": 1,
+      "researchPoints": 2,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 320,
-      "essence": 66.30591187500019,
-      "eps": 238.48728750000004,
+      "essence": 38.12854500000013,
+      "eps": 89.25840000000002,
       "insight": 164,
       "reputation": 1,
       "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 50
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 330,
-      "essence": 12.24757312500008,
-      "eps": 84.46803750000002,
+      "essence": 6.9535809375000355,
+      "eps": 54.30088125000001,
       "insight": 179,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 50
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 340,
-      "essence": 18.75467062500002,
-      "eps": 45.41748750000001,
+      "essence": 3.2772606250000087,
+      "eps": 19.464637500000002,
       "insight": 194,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 51
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 350,
-      "essence": 11.90900875000001,
-      "eps": 20.738025000000004,
+      "essence": 2.0738025,
+      "eps": 13.825350000000002,
       "insight": 208,
       "reputation": 0,
       "researchPoints": 0,
-      "contractsActive": 3,
-      "contractsCompletedTotal": 52
+      "contractsActive": 1,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 360,
-      "essence": 2.4079887500000026,
-      "eps": 14.674275000000003,
-      "insight": 222,
-      "reputation": 0,
-      "researchPoints": 0,
+      "essence": 85.45702289062534,
+      "eps": 1364.8212703125002,
+      "insight": 208,
+      "reputation": 1,
+      "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 53
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 370,
-      "essence": 2.3284800000000008,
-      "eps": 15.523200000000003,
-      "insight": 236,
-      "reputation": 0,
-      "researchPoints": 0,
-      "contractsActive": 1,
-      "contractsCompletedTotal": 54
+      "essence": 29.80189984375025,
+      "eps": 544.7824593750001,
+      "insight": 222,
+      "reputation": 1,
+      "researchPoints": 2,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 380,
-      "essence": 4.893446250000002,
-      "eps": 16.311487500000002,
-      "insight": 249,
-      "reputation": 0,
-      "researchPoints": 0,
-      "contractsActive": 1,
-      "contractsCompletedTotal": 55
+      "essence": 86.20300000000017,
+      "eps": 349.27200000000005,
+      "insight": 236,
+      "reputation": 1,
+      "researchPoints": 2,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 390,
-      "essence": 6.1542681250000015,
-      "eps": 17.160412500000003,
-      "insight": 263,
-      "reputation": 0,
-      "researchPoints": 0,
-      "contractsActive": 2,
-      "contractsCompletedTotal": 56
+      "essence": 136.95318148437528,
+      "eps": 908.3459601562502,
+      "insight": 249,
+      "reputation": 1,
+      "researchPoints": 2,
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 400,
-      "essence": 5.814940000000006,
-      "eps": 27.01400625000001,
-      "insight": 277,
-      "reputation": 0,
-      "researchPoints": 0,
+      "essence": 172.09652019531296,
+      "eps": 2834.283442675782,
+      "insight": 263,
+      "reputation": 1,
+      "researchPoints": 2,
       "contractsActive": 3,
-      "contractsCompletedTotal": 57
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 410,
-      "essence": 18.518184375000004,
-      "eps": 65.7916875,
+      "essence": 0.15833750000000002,
+      "eps": 18.797625,
       "insight": 290,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 58
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 420,
-      "essence": 26.39637156250005,
-      "eps": 127.30843125000001,
+      "essence": 8.350907187500017,
+      "eps": 48.96478125000001,
       "insight": 303,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 59
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 430,
-      "essence": 62.85906250000017,
-      "eps": 412.57755000000003,
+      "essence": 27.891680000000065,
+      "eps": 122.24520000000004,
       "insight": 316,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 440,
-      "essence": 1.0884431250000002,
-      "eps": 21.7688625,
-      "insight": 339,
+      "essence": 49.69407250000016,
+      "eps": 315.6181875000001,
+      "insight": 327,
       "reputation": 0,
       "researchPoints": 0,
-      "contractsActive": 1,
-      "contractsCompletedTotal": 60
+      "contractsActive": 3,
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 450,
-      "essence": 20.249868750000022,
-      "eps": 100.96143750000002,
+      "essence": 1.5833187500000019,
+      "eps": 22.435875000000003,
       "insight": 350,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 460,
-      "essence": 39.41379062500008,
-      "eps": 519.8149687500002,
+      "essence": 9.675580937500019,
+      "eps": 150.16876875,
       "insight": 361,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 470,
-      "essence": 12.43013375000001,
-      "eps": 48.87382500000001,
-      "insight": 383,
+      "essence": 235.2235117968755,
+      "eps": 2346.5348156250006,
+      "insight": 372,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 480,
-      "essence": 72.04616250000024,
-      "eps": 357.73093125000014,
+      "essence": 10.568699375000058,
+      "eps": 138.07158750000005,
       "insight": 394,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 490,
-      "essence": 6.908933437500015,
-      "eps": 79.49576250000001,
-      "insight": 417,
+      "essence": 237.48724621582116,
+      "eps": 4696.753359375001,
+      "insight": 405,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 500,
-      "essence": 154.67349562500033,
-      "eps": 2578.6096875000003,
+      "essence": 13.179880000000084,
+      "eps": 203.74200000000005,
       "insight": 428,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 510,
-      "essence": 21.932470312500108,
-      "eps": 227.51190000000005,
+      "essence": 12.213354687500015,
+      "eps": 56.87797500000001,
       "insight": 449,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 520,
-      "essence": 21.017965312500017,
-      "eps": 104.20554375000002,
-      "insight": 471,
+      "essence": 377.9738531250006,
+      "eps": 5138.800734375001,
+      "insight": 460,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 530,
-      "essence": 2.5632540625000058,
-      "eps": 46.47864375000001,
-      "insight": 491,
+      "essence": 51.65038984375008,
+      "eps": 455.69081250000005,
+      "insight": 481,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 540,
-      "essence": 362.554127128907,
-      "eps": 6117.521250585938,
+      "essence": 55.424077500000095,
+      "eps": 252.73710000000005,
       "insight": 501,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 550,
-      "essence": 210.71620443359433,
-      "eps": 3743.5887070312506,
+      "essence": 18.64938250000008,
+      "eps": 246.49143750000005,
       "insight": 522,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 560,
-      "essence": 709.3579417504893,
-      "eps": 13999.087807031252,
+      "essence": 16.83632125000004,
+      "eps": 256.04184375,
       "insight": 543,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 570,
-      "essence": 1448.1812141876237,
-      "eps": 25228.429361389168,
+      "essence": 43.352667187500096,
+      "eps": 283.78350000000006,
       "insight": 565,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 580,
-      "essence": 11.358083750000002,
-      "eps": 37.473975,
-      "insight": 598,
+      "essence": 34.86931125000011,
+      "eps": 524.4992156250001,
+      "insight": 587,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 590,
-      "essence": 35.768128437500025,
-      "eps": 213.11049375000002,
-      "insight": 619,
+      "essence": 441.7299163427742,
+      "eps": 6299.52044326172,
+      "insight": 609,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     },
     {
       "tSec": 600,
-      "essence": 34.28003062500018,
-      "eps": 629.3717718750001,
+      "essence": 8.931194062500014,
+      "eps": 119.88033750000002,
       "insight": 639,
       "reputation": 0,
       "researchPoints": 0,
       "contractsActive": 3,
-      "contractsCompletedTotal": 60
+      "contractsCompletedTotal": 15,
+      "disciples": 2
     }
   ]
 }

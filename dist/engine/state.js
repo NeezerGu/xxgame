@@ -6,6 +6,7 @@ import { getResearchModifiers } from "./research";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { addResources, createEmptyResources, getResource } from "./resources";
 import { getEquipmentModifiers } from "./equipment";
+import { syncAutomation } from "./disciples";
 export const BASE_PRODUCTION = 1;
 export function calculateProduction(state) {
     const additiveBonus = Object.entries(state.upgrades).reduce((total, [id, level]) => {
@@ -54,7 +55,7 @@ export function resetState(state) {
         lastFocusAtMs: null,
         contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots))
     };
-    return calculateProduction(reset);
+    return calculateProduction(syncAutomation(reset));
 }
 export function resetStateRealm() {
     return buildRealmState(getInitialRealmId());
