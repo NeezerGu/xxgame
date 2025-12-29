@@ -32,7 +32,7 @@ export const REALM_DEFINITIONS: RealmDefinition[] = [
     breakthroughRequirement: {},
     unlocks: {
       unlockTabs: ["realm", "contracts", "upgrades", "research", "ascend", "dev", "help"],
-      unlockContractIds: ["starter-recon", "essence-delivery", "lab-support", "field-analysis", "relay-maintenance", "artifact-catalog", "stabilize-array", "sealed-archive"],
+      unlockContractIds: ["starter-recon", "essence-delivery", "lab-support", "field-analysis", "relay-maintenance", "artifact-catalog", "stabilize-array", "sealed-archive", "herb-gathering", "ore-survey"],
       unlockResearchIds: ["contractSpeed", "productionBoost", "extraContractSlot"],
       unlockRecipeIds: []
     }

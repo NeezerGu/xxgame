@@ -4,12 +4,13 @@ import { ASCEND_THRESHOLD, calculateInsightGain, canAscend } from "@engine/progr
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
-import type { GameState } from "@engine/types";
+import type { GameState, ResourceId } from "@engine/types";
 import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
 import { canBreakthrough, getCurrentRealm, getNextRealm } from "@engine/progressionRealm";
+import { getResource } from "@engine/resources";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -29,6 +30,7 @@ const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "ascen
 
 type TabKey = "realm" | "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
 type ContractSortMode = "default" | "score";
+const REWARD_DISPLAY_ORDER = ["research", "reputation", "essence", "herb", "ore", "insight"] as const;
 
 interface LoadedState {
   state: GameState;
@@ -293,7 +295,14 @@ function App() {
     }
   };
 
-  const ascendProgress = Math.min(1, gameState.resources.essence / ASCEND_THRESHOLD);
+  const essence = getResource(gameState.resources, "essence");
+  const researchPoints = getResource(gameState.resources, "research");
+  const reputationValue = getResource(gameState.resources, "reputation");
+  const insightValue = getResource(gameState.resources, "insight");
+  const herbValue = getResource(gameState.resources, "herb");
+  const oreValue = getResource(gameState.resources, "ore");
+
+  const ascendProgress = Math.min(1, essence / ASCEND_THRESHOLD);
   const ascendReady = canAscend(gameState);
   const insightPreview = calculateInsightGain(gameState);
   const formattedInsightGain = formatInt(insightPreview.gain, locale);
@@ -372,7 +381,7 @@ function App() {
   const blockedReason = !canBreakRealm
     ? realmRequirements.find((item) => !item.met)?.label ?? t("realm.requirement.none", undefined, locale)
     : null;
-  const reputation = gameState.resources.reputation;
+  const reputation = reputationValue;
   const activeContracts = gameState.contracts.slots.filter((slot) => slot.status === "active").length;
   const unlockedContracts = CONTRACT_DEFINITIONS.filter(
     (def) => (def.requiredReputation ?? 0) <= reputation
@@ -414,6 +423,17 @@ function App() {
     ],
     [locale]
   );
+  const resourceLabels = useMemo(
+    () => ({
+      essence: t("stats.essence", undefined, locale),
+      research: t("stats.research", undefined, locale),
+      reputation: t("stats.reputation", undefined, locale),
+      insight: t("stats.insight", undefined, locale),
+      herb: t("stats.herb", undefined, locale),
+      ore: t("stats.ore", undefined, locale)
+    }),
+    [locale]
+  );
   const glossaryEntries = useMemo(
     () => [
       {
@@ -435,6 +455,14 @@ function App() {
       {
         label: t("stats.insight", undefined, locale),
         description: t("help.glossary.insight", undefined, locale)
+      },
+      {
+        label: t("stats.herb", undefined, locale),
+        description: t("help.glossary.herb", undefined, locale)
+      },
+      {
+        label: t("stats.ore", undefined, locale),
+        description: t("help.glossary.ore", undefined, locale)
       }
     ],
     [locale]
@@ -451,7 +479,7 @@ function App() {
         const isActive = slot.status === "active";
         const isCompleted = slot.status === "completed";
         const hasCapacity = activeContracts < gameState.contracts.maxSlots || isActive || isCompleted;
-        const hasEssenceForCost = gameState.resources.essence >= acceptCost;
+        const hasEssenceForCost = essence >= acceptCost;
         const meetsEssenceRate = gameState.production.perSecond >= requiredEssencePerSecond;
         const available =
           slot.status === "idle" &&
@@ -464,6 +492,8 @@ function App() {
           rewardResearch: slot.reward.research,
           rewardReputation: slot.reward.reputation,
           rewardEssence: slot.reward.essence,
+          rewardHerb: slot.reward.herb,
+          rewardOre: slot.reward.ore,
           acceptCostEssence: acceptCost,
           durationMs: slot.durationMs,
           weights: DEFAULT_CONTRACT_WEIGHTS
@@ -491,7 +521,7 @@ function App() {
       gameState.contracts.maxSlots,
       gameState.contracts.slots,
       gameState.production.perSecond,
-      gameState.resources.essence,
+      essence,
       gameState.realm.unlockedContractIds,
       reputation
     ]
@@ -568,19 +598,27 @@ function App() {
           <Stat label={t("stats.realm", undefined, locale)} value={realmLabel} />
           <Stat
             label={t("stats.essence", undefined, locale)}
-            value={formatCompact(gameState.resources.essence)}
+            value={formatCompact(essence)}
           />
           <Stat
             label={t("stats.research", undefined, locale)}
-            value={formatInt(gameState.resources.research, locale)}
+            value={formatInt(researchPoints, locale)}
           />
           <Stat
             label={t("stats.reputation", undefined, locale)}
-            value={formatInt(gameState.resources.reputation, locale)}
+            value={formatInt(reputationValue, locale)}
           />
           <Stat
             label={t("stats.insight", undefined, locale)}
-            value={formatInt(gameState.resources.insight, locale)}
+            value={formatInt(insightValue, locale)}
+          />
+          <Stat
+            label={t("stats.herb", undefined, locale)}
+            value={formatCompact(herbValue)}
+          />
+          <Stat
+            label={t("stats.ore", undefined, locale)}
+            value={formatCompact(oreValue)}
           />
           <Stat
             label={t("stats.essencePerSecond", undefined, locale)}
@@ -786,24 +824,23 @@ function App() {
                     </div>
                     <div className="contract-actions">
                       <div className="reward-row">
-                        {slot.reward.essence ? (
-                          <RewardBadge
-                            label={t("stats.essence", undefined, locale)}
-                            amount={formatCompact(slot.reward.essence)}
-                          />
-                        ) : null}
-                        {slot.reward.research ? (
-                          <RewardBadge
-                            label={t("stats.research", undefined, locale)}
-                            amount={formatInt(slot.reward.research, locale)}
-                          />
-                        ) : null}
-                        {slot.reward.reputation ? (
-                          <RewardBadge
-                            label={t("stats.reputation", undefined, locale)}
-                            amount={formatInt(slot.reward.reputation, locale)}
-                          />
-                        ) : null}
+                        {REWARD_DISPLAY_ORDER.map((resourceId) => {
+                          const amount = slot.reward[resourceId as ResourceId];
+                          if (!amount) return null;
+                          const formatted =
+                            resourceId === "research" ||
+                            resourceId === "reputation" ||
+                            resourceId === "insight"
+                              ? formatInt(amount, locale)
+                              : formatCompact(amount);
+                          return (
+                            <RewardBadge
+                              key={resourceId}
+                              label={resourceLabels[resourceId as ResourceId]}
+                              amount={formatted}
+                            />
+                          );
+                        })}
                       </div>
                       {entry.isCompleted ? (
                         <button
@@ -865,7 +902,7 @@ function App() {
             {UPGRADE_DEFINITIONS.map((upgrade) => {
               const owned = gameState.upgrades[upgrade.id] ?? 0;
               const nextCost = getUpgradeCost(upgrade, owned);
-              const affordable = gameState.resources.essence >= nextCost;
+              const affordable = essence >= nextCost;
               return (
                 <div className="upgrade-row" key={upgrade.id}>
                   <div>
@@ -900,7 +937,7 @@ function App() {
               <p className="muted small">{t("research.hint", undefined, locale)}</p>
             </div>
             <div className="cost">
-              {t("research.balance", { amount: formatInt(gameState.resources.research, locale) }, locale)}
+              {t("research.balance", { amount: formatInt(researchPoints, locale) }, locale)}
             </div>
           </div>
           <div className="upgrade-list">
@@ -910,15 +947,15 @@ function App() {
               const prerequisitesMet = (node.prerequisites ?? []).every(
                 (pre) => gameState.research.nodes[pre]?.purchased
               );
-              const affordable = gameState.resources.research >= node.costResearch;
+              const affordable = researchPoints >= node.costResearch;
               const buyable = realmUnlocked && canBuyResearch(gameState, node.id);
               const buttonLabel = purchased
                 ? t("research.purchased", undefined, locale)
                 : !realmUnlocked
                   ? t("research.lockedRealm", undefined, locale)
-                : !prerequisitesMet
-                  ? t("research.locked", undefined, locale)
-                  : t("research.buy", undefined, locale);
+                  : !prerequisitesMet
+                    ? t("research.locked", undefined, locale)
+                    : t("research.buy", undefined, locale);
               return (
                 <div className="upgrade-row" key={node.id}>
                   <div>
@@ -945,8 +982,8 @@ function App() {
                           : !realmUnlocked
                             ? t("research.lockedRealm", undefined, locale)
                             : !affordable
-                            ? t("research.notEnough", undefined, locale)
-                            : undefined
+                              ? t("research.notEnough", undefined, locale)
+                              : undefined
                       }
                     >
                       {buttonLabel}

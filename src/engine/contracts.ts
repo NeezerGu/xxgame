@@ -1,6 +1,7 @@
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { CONTRACT_DEFINITIONS, findContractDefinition, type ContractId } from "./data/contracts";
 import type { ContractsState, ContractSlot, GameState } from "./types";
+import { addResources, getResource, spendResources } from "./resources";
 
 const DEFAULT_CONTRACT_SLOTS = BASE_CONTRACT_SLOTS;
 
@@ -37,13 +38,13 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
   if (!state.realm.unlockedContractIds.includes(contractId)) {
     return state;
   }
-  if (state.resources.reputation < requiredReputation) {
+  if (getResource(state.resources, "reputation") < requiredReputation) {
     return state;
   }
   if (state.production.perSecond < requiredEssencePerSecond) {
     return state;
   }
-  if (state.resources.essence < acceptCostEssence) {
+  if (getResource(state.resources, "essence") < acceptCostEssence) {
     return state;
   }
   if (activeSlots >= state.contracts.maxSlots) {
@@ -61,10 +62,7 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
 
   return {
     ...state,
-    resources: {
-      ...state.resources,
-      essence: state.resources.essence - acceptCostEssence
-    },
+    resources: spendResources(state.resources, { essence: acceptCostEssence }),
     contracts: replaceSlot(state.contracts, slotIndex, updatedSlot)
   };
 }
@@ -118,13 +116,7 @@ export function completeContract(state: GameState, contractId: ContractId): Game
   }
 
   const reward = slot.reward;
-  const updatedResources = {
-    ...state.resources,
-    essence: state.resources.essence + (reward.essence ?? 0),
-    research: state.resources.research + (reward.research ?? 0),
-    insight: state.resources.insight + (reward.insight ?? 0),
-    reputation: state.resources.reputation + (reward.reputation ?? 0)
-  };
+  const updatedResources = addResources(state.resources, reward);
 
   const resetSlot: ContractSlot = {
     ...slot,

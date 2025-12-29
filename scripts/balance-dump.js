@@ -59,6 +59,7 @@ async function main() {
   const { CONTRACT_DEFINITIONS } = await loadModule("data/contracts.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
+  const { RESOURCE_IDS } = await loadModule("resources.js");
 
   const balanceJson = {
     constants: {
@@ -100,9 +101,7 @@ async function main() {
   const contractRows = CONTRACT_DEFINITIONS.map((c) => [
     c.id,
     c.durationMs / 1000,
-    c.reward.research ?? 0,
-    c.reward.reputation ?? 0,
-    c.reward.essence ?? 0,
+    ...RESOURCE_IDS.map((id) => c.reward[id] ?? 0),
     c.requiredEssencePerSecond ?? 0,
     c.requiredReputation ?? 0
   ]);
@@ -120,7 +119,7 @@ async function main() {
     renderTable(["ID", "Cost Research", "Effect Type", "Effect", "Prerequisites"], researchRows),
     "## 契约",
     renderTable(
-      ["ID", "Duration(s)", "Reward Research", "Reward Reputation", "Reward Essence", "Req EPS", "Req Reputation"],
+      ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],
       contractRows
     ),
     "## 关键常量",

@@ -5,6 +5,7 @@ import { initializeUpgradesRecord } from "./utils";
 import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
 import { getResearchModifiers } from "./research";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";
+import { addResources, createEmptyResources, getResource } from "./resources";
 
 export const BASE_PRODUCTION = 1;
 
@@ -26,7 +27,7 @@ export function calculateProduction(state: GameState): GameState {
   }, 1);
 
   const researchModifiers = getResearchModifiers(state);
-  const insightMultiplier = 1 + state.resources.insight * INSIGHT_PROD_BONUS_PER_POINT;
+  const insightMultiplier = 1 + getResource(state.resources, "insight") * INSIGHT_PROD_BONUS_PER_POINT;
   const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier;
 
   const basePerSecond = BASE_PRODUCTION;
@@ -46,12 +47,9 @@ export function calculateProduction(state: GameState): GameState {
 export function resetState(state: GameState): GameState {
   const reset: GameState = {
     ...state,
-    resources: {
-      essence: 0,
-      insight: state.resources.insight,
-      research: 0,
-      reputation: 0
-    },
+    resources: addResources(createEmptyResources(), {
+      insight: getResource(state.resources, "insight")
+    }),
     runStats: {
       essenceEarned: 0,
       contractsCompleted: 0

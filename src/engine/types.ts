@@ -10,19 +10,11 @@ export interface ProductionState {
   perSecond: number;
 }
 
-export interface ResourcesState {
-  essence: number;
-  insight: number;
-  research: number;
-  reputation: number;
-}
+export type ResourceId = "essence" | "insight" | "research" | "reputation" | "herb" | "ore";
 
-export interface ContractReward {
-  essence?: number;
-  research?: number;
-  insight?: number;
-  reputation?: number;
-}
+export type ResourcesState = Record<ResourceId, number>;
+
+export type ContractReward = Partial<Record<ResourceId, number>>;
 
 export interface ContractSlot {
   id: ContractId;

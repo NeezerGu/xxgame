@@ -13,6 +13,8 @@ export const enUSMessages: Record<MessageKey, string> = {
   "stats.research": "Research",
   "stats.reputation": "Reputation",
   "stats.essencePerSecond": "Essence/sec",
+  "stats.herb": "Herb",
+  "stats.ore": "Ore",
   "stats.realm": "Realm",
 
   "tab.realm": "Realm",
@@ -150,6 +152,10 @@ export const enUSMessages: Record<MessageKey, string> = {
   "contracts.stabilizeArray.description": "Tune the containment array under pressure to avoid cascade.",
   "contracts.sealedArchive.name": "Sealed Archive",
   "contracts.sealedArchive.description": "Authenticate and decode a sealed archive while keeping it intact.",
+  "contracts.herbGathering.name": "Herb Gathering",
+  "contracts.herbGathering.description": "Patrol the herb plots, collect mature samples, and package them cleanly.",
+  "contracts.oreSurvey.name": "Ore Survey",
+  "contracts.oreSurvey.description": "Probe ore veins, collect samples, and log stability plus impurity readings.",
 
   "help.title": "Help / Quickstart",
   "help.quickstart.title": "Quickstart in 1 minute",
@@ -164,6 +170,8 @@ export const enUSMessages: Record<MessageKey, string> = {
   "help.glossary.research": "Spent on research nodes to unlock lasting boosts.",
   "help.glossary.reputation": "Defines which contract tiers are available; higher unlocks more.",
   "help.glossary.insight": "Earned from Ascension; grants permanent production boosts.",
+  "help.glossary.herb": "Foundational herb material for alchemy-style recipes, gained from gathering contracts.",
+  "help.glossary.ore": "Ore used for forging/building, gained from survey or extraction contracts.",
   "help.faq.title": "FAQ",
   "help.faq.locked": "Cannot accept orders: raise your Reputation to meet the contract requirement.",
   "help.faq.capacity": "No free slots: finish current contracts before accepting new ones.",

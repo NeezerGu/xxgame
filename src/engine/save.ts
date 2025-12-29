@@ -6,8 +6,9 @@ import { initializeUpgradesRecord } from "./utils";
 import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";
+import { createEmptyResources } from "./resources";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -24,6 +25,10 @@ interface LegacySerializedSaveV1 {
   state: LegacyGameStateV1;
 }
 
+function normalizeResources(resources: Partial<GameState["resources"]> | undefined) {
+  return createEmptyResources(resources ?? {});
+}
+
 function isLegacySerializedSaveV1(save: SerializedSave | LegacySerializedSaveV1): save is LegacySerializedSaveV1 {
   return save.schemaVersion === 1 && "state" in save && "essence" in save.state;
 }
@@ -33,12 +38,7 @@ export function createInitialState(nowMs: number): GameState {
   const base: GameState = {
     schemaVersion: SCHEMA_VERSION,
     seed,
-    resources: {
-      essence: 0,
-      insight: 0,
-      research: 0,
-      reputation: 0
-    },
+    resources: createEmptyResources(),
     runStats: {
       essenceEarned: 0,
       contractsCompleted: 0
@@ -86,6 +86,18 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
 
+  if (save.schemaVersion === 5) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+
   if (save.schemaVersion === 4) {
     const migratedState: GameState = {
       ...(save as SerializedSave).state,
@@ -126,12 +138,12 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     const migratedState: GameState = {
       schemaVersion: SCHEMA_VERSION,
       seed: Math.max(1, Math.floor(save.savedAtMs % 1_000_000)),
-      resources: {
+      resources: createEmptyResources({
         essence: save.state.essence ?? 0,
         insight: save.state.insight ?? 0,
         research: 0,
         reputation: 0
-      },
+      }),
       runStats: {
         essenceEarned: 0,
         contractsCompleted: 0
@@ -168,12 +180,7 @@ function applyStateDefaults(state: GameState): GameState {
     ...state,
     schemaVersion: SCHEMA_VERSION,
     seed: state.seed ?? 1,
-    resources: {
-      essence: state.resources?.essence ?? 0,
-      insight: state.resources?.insight ?? 0,
-      research: state.resources?.research ?? 0,
-      reputation: state.resources?.reputation ?? 0
-    },
+    resources: normalizeResources(state.resources),
     runStats: {
       essenceEarned: state.runStats?.essenceEarned ?? 0,
       contractsCompleted: state.runStats?.contractsCompleted ?? 0

@@ -6,7 +6,9 @@ export type ContractId =
   | "relay-maintenance"
   | "artifact-catalog"
   | "stabilize-array"
-  | "sealed-archive";
+  | "sealed-archive"
+  | "herb-gathering"
+  | "ore-survey";
 
 export interface ContractDefinition {
   id: ContractId;
@@ -17,11 +19,7 @@ export interface ContractDefinition {
   tier?: number;
   acceptCostEssence?: number;
   requiredEssencePerSecond?: number;
-  reward: {
-    essence?: number;
-    research?: number;
-    reputation?: number;
-  };
+  reward: Partial<Record<import("../types").ResourceId, number>>;
 }
 
 export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
@@ -143,6 +141,38 @@ export const CONTRACT_DEFINITIONS: ContractDefinition[] = [
       research: 28,
       essence: 130,
       reputation: 12
+    }
+  },
+  {
+    id: "herb-gathering",
+    nameKey: "contracts.herbGathering.name",
+    descriptionKey: "contracts.herbGathering.description",
+    durationMs: 35_000,
+    requiredReputation: 15,
+    tier: 2,
+    acceptCostEssence: 10,
+    requiredEssencePerSecond: 1.5,
+    reward: {
+      research: 8,
+      essence: 25,
+      herb: 15,
+      reputation: 3
+    }
+  },
+  {
+    id: "ore-survey",
+    nameKey: "contracts.oreSurvey.name",
+    descriptionKey: "contracts.oreSurvey.description",
+    durationMs: 42_000,
+    requiredReputation: 25,
+    tier: 3,
+    acceptCostEssence: 18,
+    requiredEssencePerSecond: 2,
+    reward: {
+      research: 12,
+      essence: 35,
+      ore: 10,
+      reputation: 4
     }
   }
 ];

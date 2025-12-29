@@ -6,6 +6,7 @@ import type { ResearchId } from "./data/research";
 import { REALM_DEFINITIONS } from "./data/realms";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { getResearchModifiers } from "./research";
+import { getResource } from "./resources";
 
 interface AccumulatedUnlocks {
   unlockTabs: string[];
@@ -84,7 +85,7 @@ export function canBreakthrough(state: GameState): boolean {
   ) {
     return false;
   }
-  if (requirement.reputation !== undefined && state.resources.reputation < requirement.reputation) {
+  if (requirement.reputation !== undefined && getResource(state.resources, "reputation") < requirement.reputation) {
     return false;
   }
 

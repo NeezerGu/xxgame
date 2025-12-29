@@ -9,6 +9,8 @@ export const zhCNMessages = {
   "stats.research": "研究点",
   "stats.reputation": "声望",
   "stats.essencePerSecond": "精华/秒",
+  "stats.herb": "灵植",
+  "stats.ore": "灵矿",
   "stats.realm": "境界",
 
   "tab.realm": "境界",
@@ -146,6 +148,10 @@ export const zhCNMessages = {
   "contracts.stabilizeArray.description": "在压力下调校收容阵列，避免能量连锁。",
   "contracts.sealedArchive.name": "封印档案",
   "contracts.sealedArchive.description": "鉴定并解读封印档案，确保原件完好无损。",
+  "contracts.herbGathering.name": "灵植采集",
+  "contracts.herbGathering.description": "巡查灵田并采摘成熟灵植，按要求分拣封装。",
+  "contracts.oreSurvey.name": "矿脉勘测",
+  "contracts.oreSurvey.description": "标定矿脉产区并取回样本，记录稳定性与杂质含量。",
 
   "help.title": "帮助 / Quickstart",
   "help.quickstart.title": "一分钟上手",
@@ -160,6 +166,8 @@ export const zhCNMessages = {
   "help.glossary.research": "购买研究节点，解锁长期增益。",
   "help.glossary.reputation": "决定可接触的契约阶梯，越高解锁越多。",
   "help.glossary.insight": "飞升获得，提供永久产出提升。",
+  "help.glossary.herb": "用于炼丹或配方的基础灵植材料，来自采集类契约。",
+  "help.glossary.ore": "用于炼器或建造的矿物材料，来自勘测/挖掘类契约。",
   "help.faq.title": "常见问题",
   "help.faq.locked": "无法接单：契约未解锁时需要先提升声望到要求。",
   "help.faq.capacity": "栏位满：等待当前契约完成后再接新单。",

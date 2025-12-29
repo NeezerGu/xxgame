@@ -2,6 +2,7 @@ import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { ensureContractSlotCount } from "./contracts";
 import { findResearchDefinition, RESEARCH_DEFINITIONS, type ResearchId } from "./data/research";
 import type { GameState, ResearchState } from "./types";
+import { getResource } from "./resources";
 
 export interface ResearchModifiers {
   productionMult: number;
@@ -43,7 +44,7 @@ export function canBuyResearch(state: GameState, id: ResearchId): boolean {
     return false;
   }
 
-  return state.resources.research >= def.costResearch;
+  return getResource(state.resources, "research") >= def.costResearch;
 }
 
 export function applyResearchPurchase(state: GameState, id: ResearchId): GameState {
@@ -65,7 +66,7 @@ export function applyResearchPurchase(state: GameState, id: ResearchId): GameSta
     research: updatedResearch,
     resources: {
       ...state.resources,
-      research: state.resources.research - def.costResearch
+      research: getResource(state.resources, "research") - def.costResearch
     }
   };
 

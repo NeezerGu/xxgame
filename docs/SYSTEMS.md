@@ -5,13 +5,13 @@
 - `seed`: number — 随机种子，所有 RNG 基于此并存档。
 - `timestamp`: number — 上次保存/模拟的毫秒时间戳。
 - `elapsedOffline`: number — 累计离线毫秒，用于上限控制。
-- `resources`: { `essence`: number, `insight`: number, `research`: number, `reputation`: number }。
+- `resources`: Record<ResourceId, number>（当前包含 essence/insight/research/reputation/herb/ore）。
 - `rates`: { `essencePerSecond`: number } — 可由派生计算得到，存放缓存/上次计算值。
 - `upgrades`: record<string, { level: number, unlocked: boolean }>。
 - `runStats`: { `essenceEarned`: number, `contractsCompleted`: number } — 记录本轮累计获得的精华与完成契约数，用于飞升收益公式。
 - `realm`: { `current`: RealmId, `unlockedTabs`: string[], `unlockedContractIds`: string[], `unlockedResearchIds`: string[], `unlockedRecipeIds`: string[] } — 境界状态与解锁表，境界突破会叠加解锁，飞升后重置回初始境界但保留研究。
 - `contracts`: {
-  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: { essence?: number, research?: number, insight?: number, reputation?: number } }>;
+  - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: Partial<Record<ResourceId, number>> }>;
   - `maxSlots`: number;
 }。
 - `research`: { nodes: record<string, { purchased: boolean }> } — 节点一旦购买永久保留，用于施加乘区或解锁槽位。
