@@ -34,6 +34,9 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
   const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
   const acceptCostEssence = def.acceptCostEssence ?? 0;
 
+  if (!state.realm.unlockedContractIds.includes(contractId)) {
+    return state;
+  }
   if (state.resources.reputation < requiredReputation) {
     return state;
   }

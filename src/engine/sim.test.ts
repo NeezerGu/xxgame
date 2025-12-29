@@ -6,6 +6,7 @@ import { getContractProgress } from "./contracts";
 import { calculateProduction } from "./state";
 import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
+import { getInitialRealmId } from "./progressionRealm";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -327,5 +328,22 @@ describe("save migration", () => {
     const migrated = deserialize(JSON.stringify(legacy));
     expect(migrated.state.runStats.essenceEarned).toBe(0);
     expect(migrated.state.runStats.contractsCompleted).toBe(0);
+  });
+
+  it("hydrates missing realm data for legacy saves", () => {
+    const legacy = {
+      schemaVersion: 4,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 4
+      }
+    };
+    // @ts-expect-error simulate legacy save without realm
+    delete legacy.state.realm;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.state.realm.current).toBe(getInitialRealmId());
+    expect(migrated.state.realm.unlockedTabs.length).toBeGreaterThan(0);
   });
 });

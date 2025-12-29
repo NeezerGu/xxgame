@@ -5,8 +5,9 @@ import type { GameState } from "./types";
 import { initializeUpgradesRecord } from "./utils";
 import { applyResearchDefaults, getResearchModifiers, initializeResearchState } from "./research";
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
+import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -42,6 +43,7 @@ export function createInitialState(nowMs: number): GameState {
       essenceEarned: 0,
       contractsCompleted: 0
     },
+    realm: buildRealmState(getInitialRealmId()),
     research: initializeResearchState(),
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: nowMs - FOCUS_COOLDOWN_MS,
@@ -84,6 +86,18 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
 
+  if (save.schemaVersion === 4) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+
   if (save.schemaVersion === 3) {
     const migratedState: GameState = {
       ...(save as SerializedSave).state,
@@ -122,6 +136,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
         essenceEarned: 0,
         contractsCompleted: 0
       },
+      realm: buildRealmState(getInitialRealmId()),
       production: save.state.production,
       upgrades: save.state.upgrades ?? initializeUpgradesRecord(),
       research: initializeResearchState(),
@@ -148,6 +163,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
 
 function applyStateDefaults(state: GameState): GameState {
   const research = applyResearchDefaults(state.research);
+  const realm = buildRealmState(state.realm?.current ?? getInitialRealmId(), state.realm);
   const withResources: GameState = {
     ...state,
     schemaVersion: SCHEMA_VERSION,
@@ -162,6 +178,7 @@ function applyStateDefaults(state: GameState): GameState {
       essenceEarned: state.runStats?.essenceEarned ?? 0,
       contractsCompleted: state.runStats?.contractsCompleted ?? 0
     },
+    realm,
     contracts: state.contracts
       ? {
           maxSlots:

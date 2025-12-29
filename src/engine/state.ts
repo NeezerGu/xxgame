@@ -4,6 +4,7 @@ import type { GameState } from "./types";
 import { initializeUpgradesRecord } from "./utils";
 import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
 import { getResearchModifiers } from "./research";
+import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 
 export const BASE_PRODUCTION = 1;
 
@@ -55,12 +56,17 @@ export function resetState(state: GameState): GameState {
       essenceEarned: 0,
       contractsCompleted: 0
     },
+    realm: resetStateRealm(),
     research: state.research,
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: null,
     contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots))
   };
   return calculateProduction(reset);
+}
+
+export function resetStateRealm(): GameState["realm"] {
+  return buildRealmState(getInitialRealmId());
 }
 
 export function syncContractDefinitions(state: GameState): GameState {

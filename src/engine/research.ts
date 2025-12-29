@@ -35,6 +35,10 @@ export function canBuyResearch(state: GameState, id: ResearchId): boolean {
     return false;
   }
 
+  if (!state.realm.unlockedResearchIds.includes(id)) {
+    return false;
+  }
+
   if ((def.prerequisites ?? []).some((pre) => !nodes[pre]?.purchased)) {
     return false;
   }

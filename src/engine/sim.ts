@@ -4,6 +4,7 @@ import { calculateProduction } from "./state";
 import type { Action, GameState } from "./types";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
+import { breakthrough } from "./progressionRealm";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -79,6 +80,9 @@ export function applyAction(state: GameState, action: Action): GameState {
     }
     case "ascend": {
       return calculateProduction(ascend(state));
+    }
+    case "breakthrough": {
+      return calculateProduction(breakthrough(state));
     }
     case "acceptContract": {
       return acceptContract(state, action.contractId);

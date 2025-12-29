@@ -9,6 +9,7 @@ import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
+import { canBreakthrough, getCurrentRealm, getNextRealm } from "@engine/progressionRealm";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -24,8 +25,9 @@ import {
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
+const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "ascend", "dev", "help"];
 
-type TabKey = "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
+type TabKey = "realm" | "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
 type ContractSortMode = "default" | "score";
 
 interface LoadedState {
@@ -66,15 +68,8 @@ function App() {
   const [shouldCrash, setShouldCrash] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const saved = safeReadStorage(TAB_STORAGE_KEY);
-    if (
-      saved === "contracts" ||
-      saved === "upgrades" ||
-      saved === "research" ||
-      saved === "ascend" ||
-      saved === "dev" ||
-      saved === "help"
-    ) {
-      return saved;
+    if (saved && ALL_TABS.includes(saved as TabKey)) {
+      return saved as TabKey;
     }
     return "contracts";
   });
@@ -94,6 +89,19 @@ function App() {
   const gameStateRef = useRef(gameState);
   const lastTickRef = useRef(performance.now());
   const savingRef = useRef(false);
+  const tabDefinitions = useMemo(
+    () =>
+      [
+        { key: "realm", label: t("tab.realm", undefined, locale) },
+        { key: "contracts", label: t("tab.contracts", undefined, locale) },
+        { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
+        { key: "research", label: t("tab.research", undefined, locale) },
+        { key: "ascend", label: t("tab.ascend", undefined, locale) },
+        { key: "dev", label: t("tab.dev", undefined, locale) },
+        { key: "help", label: t("tab.help", undefined, locale) }
+      ] as const,
+    [locale]
+  );
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -103,6 +111,13 @@ function App() {
     document.documentElement.lang = locale;
     document.title = t("app.title", undefined, locale);
   }, [locale]);
+
+  useEffect(() => {
+    const unlockedTabKeys = ALL_TABS.filter((tab) => gameState.realm.unlockedTabs.includes(tab));
+    if (!unlockedTabKeys.includes(activeTab)) {
+      setActiveTab(unlockedTabKeys[0] ?? "contracts");
+    }
+  }, [activeTab, gameState.realm.unlockedTabs]);
 
   useEffect(() => {
     try {
@@ -197,6 +212,10 @@ function App() {
     setGameState((prev) => applyAction(prev, { type: "ascend" }));
   };
 
+  const handleBreakthrough = () => {
+    setGameState((prev) => applyAction(prev, { type: "breakthrough" }));
+  };
+
   const handleBuyResearch = (researchId: (typeof RESEARCH_DEFINITIONS)[number]["id"]) => {
     setGameState((prev) => applyAction(prev, { type: "buyResearch", researchId }));
   };
@@ -263,6 +282,9 @@ function App() {
   };
 
   const handleTabChange = (tab: TabKey) => {
+    if (!gameState.realm.unlockedTabs.includes(tab)) {
+      return;
+    }
     setActiveTab(tab);
     try {
       window.localStorage.setItem(TAB_STORAGE_KEY, tab);
@@ -279,6 +301,77 @@ function App() {
   const formattedContractTerm = formatCompact(insightPreview.contractTerm, { maxDecimals: 2 });
   const formattedEssenceEarned = formatCompact(gameState.runStats.essenceEarned, { maxDecimals: 2 });
   const formattedContractsCompleted = formatInt(gameState.runStats.contractsCompleted, locale);
+  const currentRealm = getCurrentRealm(gameState);
+  const nextRealm = getNextRealm(gameState);
+  const realmLabel = t(currentRealm.nameKey as MessageKey, undefined, locale);
+  const realmDescription = t(currentRealm.descriptionKey as MessageKey, undefined, locale);
+  const nextRealmLabel = nextRealm ? t(nextRealm.nameKey as MessageKey, undefined, locale) : "";
+  const realmRequirements = useMemo(() => {
+    if (!nextRealm) return [];
+    const req = nextRealm.breakthroughRequirement;
+    const items: {
+      key: string;
+      met: boolean;
+      label: string;
+      progress: number;
+    }[] = [];
+    if (req.essenceEarned !== undefined) {
+      const required = req.essenceEarned;
+      const current = gameState.runStats.essenceEarned;
+      items.push({
+        key: "essenceEarned",
+        met: current >= required,
+        label: t(
+          "realm.requirement.essenceEarned",
+          {
+            current: formatCompact(current, { maxDecimals: 2 }),
+            required: formatCompact(required, { maxDecimals: 2 })
+          },
+          locale
+        ),
+        progress: required > 0 ? Math.min(1, current / required) : 1
+      });
+    }
+    if (req.contractsCompleted !== undefined) {
+      const required = req.contractsCompleted;
+      const current = gameState.runStats.contractsCompleted;
+      items.push({
+        key: "contractsCompleted",
+        met: current >= required,
+        label: t(
+          "realm.requirement.contractsCompleted",
+          {
+            current: formatInt(current, locale),
+            required: formatInt(required, locale)
+          },
+          locale
+        ),
+        progress: required > 0 ? Math.min(1, current / required) : 1
+      });
+    }
+    if (req.reputation !== undefined) {
+      const required = req.reputation;
+      const current = gameState.resources.reputation;
+      items.push({
+        key: "reputation",
+        met: current >= required,
+        label: t(
+          "realm.requirement.reputation",
+          {
+            current: formatInt(current, locale),
+            required: formatInt(required, locale)
+          },
+          locale
+        ),
+        progress: required > 0 ? Math.min(1, current / required) : 1
+      });
+    }
+    return items;
+  }, [gameState.resources.reputation, gameState.runStats.contractsCompleted, gameState.runStats.essenceEarned, locale, nextRealm]);
+  const canBreakRealm = nextRealm ? canBreakthrough(gameState) : false;
+  const blockedReason = !canBreakRealm
+    ? realmRequirements.find((item) => !item.met)?.label ?? t("realm.requirement.none", undefined, locale)
+    : null;
   const reputation = gameState.resources.reputation;
   const activeContracts = gameState.contracts.slots.filter((slot) => slot.status === "active").length;
   const unlockedContracts = CONTRACT_DEFINITIONS.filter(
@@ -324,6 +417,10 @@ function App() {
   const glossaryEntries = useMemo(
     () => [
       {
+        label: t("stats.realm", undefined, locale),
+        description: t("help.glossary.realm", undefined, locale)
+      },
+      {
         label: `${t("stats.essence", undefined, locale)} (E)`,
         description: t("help.glossary.essence", undefined, locale)
       },
@@ -349,6 +446,7 @@ function App() {
         const requiredReputation = def?.requiredReputation ?? 0;
         const acceptCost = def?.acceptCostEssence ?? 0;
         const requiredEssencePerSecond = def?.requiredEssencePerSecond ?? 0;
+        const realmUnlocked = gameState.realm.unlockedContractIds.includes(slot.id);
         const isUnlocked = reputation >= requiredReputation;
         const isActive = slot.status === "active";
         const isCompleted = slot.status === "completed";
@@ -356,7 +454,12 @@ function App() {
         const hasEssenceForCost = gameState.resources.essence >= acceptCost;
         const meetsEssenceRate = gameState.production.perSecond >= requiredEssencePerSecond;
         const available =
-          slot.status === "idle" && isUnlocked && hasCapacity && hasEssenceForCost && meetsEssenceRate;
+          slot.status === "idle" &&
+          realmUnlocked &&
+          isUnlocked &&
+          hasCapacity &&
+          hasEssenceForCost &&
+          meetsEssenceRate;
         const score = computeContractScore({
           rewardResearch: slot.reward.research,
           rewardReputation: slot.reward.reputation,
@@ -371,6 +474,7 @@ function App() {
           requiredReputation,
           acceptCost,
           requiredEssencePerSecond,
+          realmUnlocked,
           isUnlocked,
           isActive,
           isCompleted,
@@ -388,8 +492,13 @@ function App() {
       gameState.contracts.slots,
       gameState.production.perSecond,
       gameState.resources.essence,
+      gameState.realm.unlockedContractIds,
       reputation
     ]
+  );
+  const visibleTabs = useMemo(
+    () => tabDefinitions.filter((tab) => gameState.realm.unlockedTabs.includes(tab.key)),
+    [gameState.realm.unlockedTabs, tabDefinitions]
   );
   const filteredContracts = useMemo(() => {
     const base = contractEntries.filter((entry) => {
@@ -456,6 +565,7 @@ function App() {
           </div>
         </div>
         <div className="stats-grid">
+          <Stat label={t("stats.realm", undefined, locale)} value={realmLabel} />
           <Stat
             label={t("stats.essence", undefined, locale)}
             value={formatCompact(gameState.resources.essence)}
@@ -480,16 +590,7 @@ function App() {
       </header>
 
       <nav className="tabs">
-        {(
-          [
-            { key: "contracts", label: t("tab.contracts", undefined, locale) },
-            { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
-            { key: "research", label: t("tab.research", undefined, locale) },
-            { key: "ascend", label: t("tab.ascend", undefined, locale) },
-            { key: "dev", label: t("tab.dev", undefined, locale) },
-            { key: "help", label: t("tab.help", undefined, locale) }
-          ] as const
-        ).map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.key}
             className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
@@ -499,6 +600,53 @@ function App() {
           </button>
         ))}
       </nav>
+
+      {activeTab === "realm" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("realm.title", undefined, locale)}</h2>
+              <p className="muted small">
+                {t("realm.currentLabel", { name: realmLabel }, locale)}
+              </p>
+            </div>
+            <div className="muted small">{t("realm.ascendResetHint", undefined, locale)}</div>
+          </div>
+          <div className="help-section">
+            <h3>{realmLabel}</h3>
+            <p className="muted">{realmDescription}</p>
+          </div>
+          {nextRealm ? (
+            <div className="help-section">
+              <h3>{t("realm.nextLabel", { name: nextRealmLabel }, locale)}</h3>
+              <ul className="help-list">
+                {realmRequirements.map((item) => (
+                  <li key={item.key}>
+                    <div className="progress-bar" style={{ marginBottom: "4px" }}>
+                      <div className="progress-fill" style={{ width: `${item.progress * 100}%` }} />
+                    </div>
+                    <span className={item.met ? "muted small" : "warning small"}>{item.label}</span>
+                  </li>
+                ))}
+              </ul>
+              <button className="action-button" onClick={handleBreakthrough} disabled={!canBreakRealm}>
+                {canBreakRealm
+                  ? t("realm.breakthroughReady", undefined, locale)
+                  : t("realm.breakthroughLocked", undefined, locale)}
+              </button>
+              {!canBreakRealm && blockedReason ? (
+                <div className="muted small" style={{ marginTop: "4px" }}>
+                  {blockedReason}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="help-section">
+              <p className="muted">{t("realm.maxed", undefined, locale)}</p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {activeTab === "contracts" ? (
         <>
@@ -571,9 +719,11 @@ function App() {
                 const formattedRequiredEps = formatCompact(entry.requiredEssencePerSecond, { maxDecimals: 1 });
                 const formattedRequiredReputation = formatInt(entry.requiredReputation, locale);
                 const progress = getContractProgress(slot);
-                const disabledReason = !entry.isUnlocked
-                  ? t("contracts.requireReputation", { required: formattedRequiredReputation }, locale)
-                  : !entry.hasCapacity
+                const disabledReason = !entry.realmUnlocked
+                  ? t("contracts.reason.realmLocked", undefined, locale)
+                  : !entry.isUnlocked
+                    ? t("contracts.requireReputation", { required: formattedRequiredReputation }, locale)
+                    : !entry.hasCapacity
                     ? t("contracts.reason.capacity", { max: formatInt(gameState.contracts.maxSlots, locale) }, locale)
                     : !entry.hasEssenceForCost
                       ? t("contracts.reason.cost", { cost: formattedAcceptCost }, locale)
@@ -614,11 +764,14 @@ function App() {
                         <div className="muted small">
                           {t("contracts.acceptCost", { cost: formattedAcceptCost }, locale)}
                         </div>
-                      ) : null}
+                        ) : null}
                       {entry.requiredEssencePerSecond > 0 ? (
                         <div className="muted small">
                           {t("contracts.requiredEps", { eps: formattedRequiredEps }, locale)}
                         </div>
+                      ) : null}
+                      {!entry.realmUnlocked ? (
+                        <div className="muted small warning">{t("contracts.reason.realmLocked", undefined, locale)}</div>
                       ) : null}
                       {!entry.isUnlocked ? (
                         <div className="muted small warning">
@@ -664,6 +817,7 @@ function App() {
                           className="action-button secondary"
                           disabled={
                             entry.isActive ||
+                            !entry.realmUnlocked ||
                             !entry.isUnlocked ||
                             !entry.hasCapacity ||
                             !entry.hasEssenceForCost ||
@@ -752,13 +906,16 @@ function App() {
           <div className="upgrade-list">
             {RESEARCH_DEFINITIONS.map((node) => {
               const purchased = gameState.research.nodes[node.id]?.purchased;
+              const realmUnlocked = gameState.realm.unlockedResearchIds.includes(node.id);
               const prerequisitesMet = (node.prerequisites ?? []).every(
                 (pre) => gameState.research.nodes[pre]?.purchased
               );
               const affordable = gameState.resources.research >= node.costResearch;
-              const buyable = canBuyResearch(gameState, node.id);
+              const buyable = realmUnlocked && canBuyResearch(gameState, node.id);
               const buttonLabel = purchased
                 ? t("research.purchased", undefined, locale)
+                : !realmUnlocked
+                  ? t("research.lockedRealm", undefined, locale)
                 : !prerequisitesMet
                   ? t("research.locked", undefined, locale)
                   : t("research.buy", undefined, locale);
@@ -767,6 +924,9 @@ function App() {
                   <div>
                     <strong>{t(node.nameKey as MessageKey, undefined, locale)}</strong>
                     <p className="muted">{t(node.descriptionKey as MessageKey, undefined, locale)}</p>
+                    {!realmUnlocked && !purchased ? (
+                      <p className="muted small">{t("research.lockedRealm", undefined, locale)}</p>
+                    ) : null}
                     {!prerequisitesMet && !purchased ? (
                       <p className="muted small">{t("research.prereqHint", undefined, locale)}</p>
                     ) : null}
@@ -782,7 +942,9 @@ function App() {
                       title={
                         purchased
                           ? t("research.purchased", undefined, locale)
-                          : !affordable
+                          : !realmUnlocked
+                            ? t("research.lockedRealm", undefined, locale)
+                            : !affordable
                             ? t("research.notEnough", undefined, locale)
                             : undefined
                       }

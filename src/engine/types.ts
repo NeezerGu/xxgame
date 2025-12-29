@@ -1,6 +1,7 @@
 import type { ContractId } from "./data/contracts";
 import type { UpgradeId } from "./data/upgrades";
 import type { ResearchId } from "./data/research";
+import type { RealmId } from "./data/realms";
 
 export interface ProductionState {
   basePerSecond: number;
@@ -51,12 +52,21 @@ export interface RunStatsState {
   contractsCompleted: number;
 }
 
+export interface RealmState {
+  current: RealmId;
+  unlockedTabs: string[];
+  unlockedContractIds: ContractId[];
+  unlockedResearchIds: ResearchId[];
+  unlockedRecipeIds: string[];
+}
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
   production: ProductionState;
   resources: ResourcesState;
   runStats: RunStatsState;
+  realm: RealmState;
   upgrades: Record<UpgradeId, number>;
   research: ResearchState;
   lastFocusAtMs: number | null;
@@ -69,4 +79,5 @@ export type Action =
   | { type: "ascend" }
   | { type: "acceptContract"; contractId: ContractId }
   | { type: "completeContract"; contractId: ContractId }
-  | { type: "buyResearch"; researchId: ResearchId };
+  | { type: "buyResearch"; researchId: ResearchId }
+  | { type: "breakthrough" };

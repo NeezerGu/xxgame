@@ -124,6 +124,7 @@ export async function runSim(userConfig = {}) {
   const { createInitialState } = await import("../dist/engine/save.js");
   const { calculateInsightGain, canAscend } = await import("../dist/engine/progression.js");
   const { canBuyResearch } = await import("../dist/engine/research.js");
+  const { canBreakthrough } = await import("../dist/engine/progressionRealm.js");
   const { RESEARCH_DEFINITIONS } = await import("../dist/engine/data/research.js");
   const { UPGRADE_DEFINITIONS } = await import("../dist/engine/data/upgrades.js");
   const { CONTRACT_DEFINITIONS } = await import("../dist/engine/data/contracts.js");
@@ -165,6 +166,16 @@ export async function runSim(userConfig = {}) {
           state = next;
         }
       }
+    }
+  }
+
+  function attemptBreakthrough() {
+    while (canBreakthrough(state)) {
+      const next = applyAction(state, { type: "breakthrough" });
+      if (next === state) {
+        break;
+      }
+      state = next;
     }
   }
 
@@ -234,6 +245,7 @@ export async function runSim(userConfig = {}) {
   while (elapsedMs < config.seconds * 1000) {
     completeContracts();
     buyResearchIfPossible();
+    attemptBreakthrough();
     tryAscend();
     buyUpgrades();
     fillContracts();
