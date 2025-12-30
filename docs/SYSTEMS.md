@@ -8,18 +8,18 @@
 - `resources`: Record<ResourceId, number>（当前包含 essence/insight/research/reputation/herb/ore）。
 - `rates`: { `essencePerSecond`: number } — 可由派生计算得到，存放缓存/上次计算值。
 - `upgrades`: record<string, { level: number, unlocked: boolean }>。
-- `runStats`: { `essenceEarned`: number, `contractsCompleted`: number } — 记录本轮累计获得的精华与完成契约数，用于飞升收益公式。
-- `realm`: { `current`: RealmId, `unlockedTabs`: string[], `unlockedContractIds`: string[], `unlockedResearchIds`: string[], `unlockedRecipeIds`: string[] } — 境界状态与解锁表，境界突破会叠加解锁，飞升后重置回初始境界但保留研究。
+- `runStats`: { `essenceEarned`: number, `contractsCompleted`: number } — 记录本轮累计获得的精华与完成委托数，用于升华收益公式。
+- `realm`: { `current`: RealmId, `unlockedTabs`: string[], `unlockedContractIds`: string[], `unlockedResearchIds`: string[], `unlockedRecipeIds`: string[] } — 阶位状态与解锁表，阶位晋升会叠加解锁，升华后重置回初始阶位但保留研究。
 - `equipmentInventory`: { `items`: Record<instanceId, { blueprintId, slot, rarity, affixes: Array<{ affixId, value }> }>, `nextId`: number } — 装备背包，实例化后的装备记录稀有度与词缀数值。
 - `equipped`: Record<EquipmentSlot, string | null> — 每个槽位当前穿戴的装备实例 ID。
-- `forgingQueue`: { `active`: null | { blueprintId, remainingMs, totalMs, rarity, affixes }, `lastFinished`: EquipmentInstance | null } — 炼器队列，当前只允许单任务，完成后产物写入背包并记录最近完成的装备以供展示。
-- `alchemyQueue`: { `active`: null | { recipeId, remainingMs, totalMs }, `lastFinished`: { itemId, quantity } | null } — 炼丹队列，单任务模式，完成后向 `consumables` 库存写入。
-- `consumables`: Record<ConsumableId, number> — 丹药/消耗品库存（确定性生成，来源于炼丹）。
-- `buffs`: Array<{ id: ConsumableId, remainingMs: number, effects: { productionMult?, contractSpeedMult? } }> — 已服用丹药的持续增益，随 tick 衰减。
-- `disciples`: { `roster`: Array<{ id, archetypeId, aptitude, role }>, `nextId`: number, `nextArchetypeIndex`: number } — 弟子 roster，原型与岗位确定性生成，可分配岗位带来自动化或被动收益。
-- `automation`: { `autoClaimContracts`: boolean, `autoAcceptContracts`: boolean } — 自动化开关，由弟子岗位决定。
+- `forgingQueue`: { `active`: null | { blueprintId, remainingMs, totalMs, rarity, affixes }, `lastFinished`: EquipmentInstance | null } — 锻造队列，当前只允许单任务，完成后产物写入背包并记录最近完成的装备以供展示。
+- `alchemyQueue`: { `active`: null | { recipeId, remainingMs, totalMs }, `lastFinished`: { itemId, quantity } | null } — 炼金队列，单任务模式，完成后向 `consumables` 库存写入。
+- `consumables`: Record<ConsumableId, number> — 炼金药剂/消耗品库存（确定性生成，来源于炼金）。
+- `buffs`: Array<{ id: ConsumableId, remainingMs: number, effects: { productionMult?, contractSpeedMult? } }> — 已服用药剂的持续增益，随 tick 衰减。
+- `disciples`: { `roster`: Array<{ id, archetypeId, aptitude, role }>, `nextId`: number, `nextArchetypeIndex`: number } — 学徒 roster，原型与岗位确定性生成，可分配岗位带来自动化或被动收益。
+- `automation`: { `autoClaimContracts`: boolean, `autoAcceptContracts`: boolean } — 自动化开关，由学徒岗位决定。
 - `settings`: { `autoClaimContracts`: boolean, `autoAcceptMode`: "recommended" | "highestScore" | "manual", `autoAlchemy`: boolean, `autoForging`: boolean } — 玩家侧的自动化偏好开关，仍需对应岗位或系统解锁后才生效。
-- `expeditions`: { `active`: null | { expeditionId, remainingMs, totalMs, log: string[], discipleId, nextEventMs, rewardRollsRemaining }, `lastResult`: { expeditionId, rewards, log } | null, `unlockedExpeditions`: Record<id, boolean> } — 历练/秘境状态，记录进行中的任务、事件日志、掉落以及解锁表。
+- `expeditions`: { `active`: null | { expeditionId, remainingMs, totalMs, log: string[], discipleId, nextEventMs, rewardRollsRemaining }, `lastResult`: { expeditionId, rewards, log } | null, `unlockedExpeditions`: Record<id, boolean> } — 外勤探索状态，记录进行中的任务、事件日志、掉落以及解锁表。
 - `contracts`: {
   - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: Partial<Record<ResourceId, number>> }>;
   - `maxSlots`: number;
@@ -30,24 +30,24 @@
 
 ## Actions（名称占位，可调整）
 - `INIT_STATE` — 初始化。
-- `TICK(dtMs)` — 按 dt 结算被动产出、契约进度、检查完成/失败。
+- `TICK(dtMs)` — 按 dt 结算被动产出、委托进度、检查完成/失败。
 - `FOCUS` — 主动获得少量 Essence，应用冷却逻辑。
 - `BUY_UPGRADE(id)` — 购买升级。
-- `ACCEPT_CONTRACT(id)` — 将待选契约放入空槽位并开始计时。
-- `COMPLETE_CONTRACT(slotId)` — 结算完成的契约并发放奖励。
+- `ACCEPT_CONTRACT(id)` — 将待选委托放入空槽位并开始计时。
+- `COMPLETE_CONTRACT(slotId)` — 结算完成的委托并发放奖励。
 - `BUY_RESEARCH(id)` — 购买研究节点。
 - `EQUIP(instanceId)` — 将背包中的装备实例穿戴到对应槽位（同槽位会替换旧装备引用）。
 - `UNEQUIP(slot)` — 卸下槽位上的装备。
 - `START_FORGE(blueprintId)` — 队列空闲且材料足够时开始锻造，立即消耗成本并规划稀有度与词缀。
-- `DISASSEMBLE(instanceId)` — 分解装备实例，移出背包/装备位，并按稀有度倍率返还部分灵矿。
-- `START_ALCHEMY(recipeId)` — 队列空闲且材料满足时开始炼丹，消耗成本后排队，完成后向 consumables 入库对应丹药。
-- `CONSUME_ITEM(itemId)` — 服用指定丹药，消耗库存、附加持续 buff（productionMult/contractSpeedMult 等）。
-- `RECRUIT_DISCIPLE` — 消耗资源招募下一位弟子（按原型列表循环且无随机）。
-- `ASSIGN_DISCIPLE_ROLE(discipleId, role|null)` — 为弟子分配岗位，岗位作用于自动化或生产派生。
-- `START_EXPEDITION(id, discipleId?)` — 若无进行中的历练，则派出历练点位，记录日志并扣除必要成本（无并行）。
+- `DISASSEMBLE(instanceId)` — 分解装备实例，移出背包/装备位，并按稀有度倍率返还部分矿石。
+- `START_ALCHEMY(recipeId)` — 队列空闲且材料满足时开始炼金，消耗成本后排队，完成后向 consumables 入库对应药剂。
+- `CONSUME_ITEM(itemId)` — 服用指定药剂，消耗库存、附加持续 buff（productionMult/contractSpeedMult 等）。
+- `RECRUIT_DISCIPLE` — 消耗资源招募下一位学徒（按原型列表循环且无随机）。
+- `ASSIGN_DISCIPLE_ROLE(discipleId, role|null)` — 为学徒分配岗位，岗位作用于自动化或生产派生。
+- `START_EXPEDITION(id, discipleId?)` — 若无进行中的外勤探索，则派出探索点位，记录日志并扣除必要成本（无并行）。
 - `UPDATE_SETTINGS(partial)` — 按玩家选择更新自动化偏好。
-- `ASCEND` — 触发软重置并计算 Insight。
-- `BREAKTHROUGH` — 当满足下一境界条件时，切换至下一境界并应用对应解锁。
+- `ASCEND` — 触发升华软重置并计算 Insight。
+- `BREAKTHROUGH` — 当满足下一阶位条件时，切换至下一阶位并应用对应解锁。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()` — 读写存档字符串。
 - `FAST_FORWARD(ms)` — 开发工具，用于模拟时间。
 
@@ -58,56 +58,56 @@
   - 派生：计算初始 rates。
 - `TICK(dtMs)`
   - 前置：dtMs >= 0；使用确定性 tick（例如固定 50ms 步长切片）。
-  - 变更：增加 Essence（考虑升级/研究/Insight 乘区）；推进 active 契约 `elapsedMs`，若达到 duration 切换为 completed 或 failed；更新 `elapsedOffline`（离线模拟时）；将炼器进度按乘区推进；若有采集类岗位则被动增加 herb/ore；推进历练计时并在事件点触发随机事件。
-  - 派生：重新计算 `rates`、Ascend 进度、可用契约池；若开启自动化且玩家在设置中启用，对应岗位会自动领取完成契约、按策略接取可用契约，并在队列空闲时自动开始可负担的炼器；历练完成时按掉落表发放奖励并写入日志。
+  - 变更：增加 Essence（考虑升级/研究/Insight 乘区）；推进 active 委托 `elapsedMs`，若达到 duration 切换为 completed 或 failed；更新 `elapsedOffline`（离线模拟时）；将锻造进度按乘区推进；若有采集类岗位则被动增加 herb/ore；推进外勤探索计时并在事件点触发随机事件。
+  - 派生：重新计算 `rates`、升华进度、可用委托池；若开启自动化且玩家在设置中启用，对应岗位会自动领取完成委托、按策略接取可用委托，并在队列空闲时自动开始可负担的锻造；外勤探索完成时按掉落表发放奖励并写入日志。
 - `FOCUS`
   - 前置：冷却结束；玩家非自动化状态。
   - 变更：即时增加 Essence，重置冷却计时。
   - 派生：若有“连击/效率”类研究，可更新短期系数。
 - `BUY_UPGRADE(id)`
   - 前置：升级已解锁，资源足够。
-  - 变更：扣除 Essence（或指定成本），升级等级 +1，可能提升容量/速率/契约速度。
-  - 派生：刷新 `rates`、相关阈值；可能解锁新的契约类型或研究节点。
+  - 变更：扣除 Essence（或指定成本），升级等级 +1，可能提升容量/速率/委托速度。
+  - 派生：刷新 `rates`、相关阈值；可能解锁新的委托类型或研究节点。
 - `ACCEPT_CONTRACT(id)`
-  - 前置：存在空闲槽，满足解锁条件（Reputation/研究/Ascend 等），并已支付接单成本（如有）。
-  - 变更：将契约实例化为 active，设置 `elapsedMs = 0`；可能占用资源/库存。
-  - 派生：记录到契约列表，更新 UI 状态与计时器。
+  - 前置：存在空闲槽，满足解锁条件（Reputation/研究/升华等），并已支付接单成本（如有）。
+  - 变更：将委托实例化为 active，设置 `elapsedMs = 0`；可能占用资源/库存。
+  - 派生：记录到委托列表，更新 UI 状态与计时器。
 - `COMPLETE_CONTRACT(slotId)`
   - 前置：该槽位 status 为 completed；如需资源交付，检查库存满足。
-  - 变更：发放奖励（E/R/I/Reputation），释放槽位为 idle；记录统计（用于 Ascend 或解锁条件）。
-  - 派生：可能刷新契约池、触发研究解锁、更新 Ascend 进度。
+  - 变更：发放奖励（E/R/I/Reputation），释放槽位为 idle；记录统计（用于升华或解锁条件）。
+  - 派生：可能刷新委托池、触发研究解锁、更新升华进度。
 - `BUY_RESEARCH(id)`
   - 前置：节点已解锁、未购买，资源（R 或 I）足够，前置研究满足。
-  - 变更：扣除成本，标记 purchased；永久作用于乘区（产出/契约速度/槽位等）。
-  - 派生：更新可用动作列表、rates、契约生成参数，必要时扩展契约槽位。
+  - 变更：扣除成本，标记 purchased；永久作用于乘区（产出/委托速度/槽位等）。
+  - 派生：更新可用动作列表、rates、委托生成参数，必要时扩展委托槽位。
 - `START_FORGE(blueprintId)`
-  - 前置：炼器队列为空且材料足够。
+  - 前置：锻造队列为空且材料足够。
   - 变更：消耗成本，基于 seed 抽取稀有度与词缀，创建 active 任务并记录剩余时间。
   - 派生：更新 seed，等待 tick 推进剩余时间。
 - `DISASSEMBLE(instanceId)`
   - 前置：背包中存在该实例。
-  - 变更：移除实例，若已穿戴则清空对应槽位，并返还稀有度倍率的灵矿。
+  - 变更：移除实例，若已穿戴则清空对应槽位，并返还稀有度倍率的矿石。
   - 派生：重算装备乘区。
 - `START_EXPEDITION`
-  - 前置：当前无 active 历练，目标历练已解锁（按境界），随行弟子可选。
-  - 变更：创建 active 历练，记录总时长与事件倒计时；若指定弟子，随行效果会在事件时应用。
-  - 派生：历练计时由 TICK 推进，事件按 10s 间隔触发，可能增减时长或额外掉落；完成时将掉落发放至资源/配方解锁并记录 result。
+  - 前置：当前无 active 外勤探索，目标探索已解锁（按阶位），随行学徒可选。
+  - 变更：创建 active 外勤探索，记录总时长与事件倒计时；若指定学徒，随行效果会在事件时应用。
+  - 派生：探索计时由 TICK 推进，事件按 10s 间隔触发，可能增减时长或额外掉落；完成时将掉落发放至资源/配方解锁并记录 result。
 - `RECRUIT_DISCIPLE`
   - 前置：资源（Essence 与 Reputation）足够。
-  - 变更：按原型列表循环创建新弟子，写入 roster，扣除成本。
+  - 变更：按原型列表循环创建新学徒，写入 roster，扣除成本。
   - 派生：刷新自动化开关（若岗位提供）。
 - `ASSIGN_DISCIPLE_ROLE`
-  - 前置：目标弟子存在且岗位在可选列表内。
-  - 变更：更新弟子岗位；若岗位为空则移除原岗位。
+  - 前置：目标学徒存在且岗位在可选列表内。
+  - 变更：更新学徒岗位；若岗位为空则移除原岗位。
   - 派生：刷新自动化开关、岗位派生值（采集、加速等）。
 - `ASCEND`
-  - 前置：满足 Ascend 阈值（如累计 Essence 或契约评分）；不在离线结算中触发。
-  - 变更：计算并增加 Insight；重置 Essence/订单进度/部分升级与研究点余额，保留研究解锁，runs +1；境界重置至初始阶段并按默认解锁刷新。
-  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates，并按研究加成生成契约槽位与解锁表。
+  - 前置：满足升华阈值（如累计 Essence 或委托评分）；不在离线结算中触发。
+  - 变更：计算并增加 Insight；重置 Essence/委托进度/部分升级与研究点余额，保留研究解锁，runs +1；阶位重置至初始阶段并按默认解锁刷新。
+  - 派生：重设 seed 或保留（取决于设计）；刷新初始 rates，并按研究加成生成委托槽位与解锁表。
 - `BREAKTHROUGH`
-  - 前置：存在下一境界且满足突破条件（如 essenceEarned / contractsCompleted / reputation）。
-  - 变更：更新 `realm.current`，叠加对应解锁（Tab/契约/研究/配方等）。
-  - 派生：刷新可见 Tab 列表、研究/契约可购买列表；保持确定性，不重置 runStats。
+  - 前置：存在下一阶位且满足晋升条件（如 essenceEarned / contractsCompleted / reputation）。
+  - 变更：更新 `realm.current`，叠加对应解锁（Tab/委托/研究/配方等）。
+  - 派生：刷新可见 Tab 列表、研究/委托可购买列表；保持确定性，不重置 runStats。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()`
   - 前置：payload 需通过 schemaVersion 校验和签名/校验（若有）。
   - 变更：导入时替换 GameState 并运行迁移；导出时序列化当前 GameState。
@@ -120,10 +120,10 @@
 ## 派生值计算
 - 产率（rates）：基于基础产出 × 升级乘区 × 研究乘区 × Insight 乘区；可缓存但需在相关动作后刷新。
 - 产率（当前实现示例）：`perSecond = (base + additive) × upgradeMult × researchMult × equipmentMult × (1 + insight × 0.05)`。
-- 契约完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。研究可提供速度乘区或额外槽位。
-- 契约速度乘区：`speedMultiplier = researchContractMult × equipmentContractMult`，与研究叠乘。
-- 炼器进度：`remainingMs = max(0, remainingMs - dtMs × forgeSpeedMult)`；降为 0 时按已规划稀有度与词缀生成装备实例，写入背包并更新 lastFinished。
+- 委托完成时间：`durationEffective = durationBase / speedMultiplier`；失败条件（超时/资源不足）按 tick 判断。研究可提供速度乘区或额外槽位。
+- 委托速度乘区：`speedMultiplier = researchContractMult × equipmentContractMult`，与研究叠乘。
+- 锻造进度：`remainingMs = max(0, remainingMs - dtMs × forgeSpeedMult)`；降为 0 时按已规划稀有度与词缀生成装备实例，写入背包并更新 lastFinished。
 - RNG：`nextRandom(seed)` 纯函数更新种子；稀有度按权重抽取（common/uncommon/rare/epic），词缀数量随稀有度变化，词缀数值在定义的 min/max 范围线性插值。相同 seed + 相同动作序列产物完全一致。
-- Ascend 预览：基于当前/累计指标计算，下行取整以防止浮点误差。
+- 升华预览：基于当前/累计指标计算，下行取整以防止浮点误差。
 - 离线模拟：`effectiveOffline = min(now - timestamp, offlineCapMs)`；按固定 tick 封顶迭代调用 TICK，避免一次性大步长偏差。
 - 离线上限：`offlineCapMs = baseOfflineCapMs + equipmentOfflineBonus`（当前基础为 8h，可由装备词缀增加）。

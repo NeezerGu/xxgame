@@ -13,7 +13,7 @@
 | productionBoost | 10 | productionMultiplier | prod x1.1 | contractSpeed |
 | extraContractSlot | 12 | contractSlot | +1 slot(s) | productionBoost |
 
-## 契约
+## 委托
 | ID | Duration(s) | Reward essence | Reward insight | Reward research | Reward reputation | Reward herb | Reward ore | Req EPS | Req Reputation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | starter-recon | 10 | 15 | 0 | 2 | 1 | 0 | 0 | 0 | 0 |
@@ -27,7 +27,7 @@
 | herb-gathering | 35 | 25 | 0 | 8 | 3 | 15 | 0 | 1.5 | 15 |
 | ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
-## 历练/秘境
+## 外勤探索
 | ID | Duration(s) | Rolls | Stamina | Required Realm | Name Key | Desc Key |
 | --- | --- | --- | --- | --- | --- | --- |
 | sunken-archive | 45 | 2 | - | - | expeditions.sunkenArchive.name | expeditions.sunkenArchive.description |
@@ -37,7 +37,7 @@
 | skyforge-span | 80 | 3 | - | forgemaster | expeditions.skyforgeSpan.name | expeditions.skyforgeSpan.description |
 | hollow-spire | 95 | 4 | - | domain-seeker | expeditions.hollowSpire.name | expeditions.hollowSpire.description |
 
-## 弟子原型
+## 学徒原型
 | ID | Base Aptitude | Allowed Roles | Name Key | Description Key |
 | --- | --- | --- | --- | --- |
 | ledger-adept | 0.18 | contractClerk, gatherer | disciples.archetype.ledgerAdept.name | disciples.archetype.ledgerAdept.description |
@@ -45,7 +45,7 @@
 | grove-runner | 0.16 | gatherer, contractClerk | disciples.archetype.groveRunner.name | disciples.archetype.groveRunner.description |
 | array-scribe | 0.14 | contractClerk, alchemist | disciples.archetype.arrayScribe.name | disciples.archetype.arrayScribe.description |
 
-## 弟子岗位效果
+## 学徒岗位效果
 | Role | Auto Claim | Auto Accept | Forge Speed/apt | Alchemy Speed/apt | Herb/s/apt | Ore/s/apt |
 | --- | --- | --- | --- | --- | --- | --- |
 | contractClerk | yes | yes | 0 | 0 | 0 | 0 |
