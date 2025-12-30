@@ -19,6 +19,7 @@ import {
   findAffixDefinition,
   findEquipmentBlueprint
 } from "@engine/data/equipment";
+import { FACILITY_DEFINITIONS, type FacilityId } from "@engine/data/facilities";
 import { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS, findAlchemyRecipe, findConsumableDefinition } from "@engine/data/alchemy";
 import { isRecipeUnlocked } from "@engine/alchemy";
 import {
@@ -29,6 +30,13 @@ import {
 } from "@engine/data/disciples";
 import { getDiscipleModifiers } from "@engine/disciples";
 import { EXPEDITION_DEFINITIONS, findExpeditionDefinition, type ExpeditionId } from "@engine/data/expeditions";
+import {
+  applyFacilityDefaults,
+  canUpgradeFacility,
+  getFacilityEffectTotals,
+  getFacilityModifiers,
+  getFacilityUpgradeCost
+} from "@engine/facilities";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -50,6 +58,7 @@ const ALL_TABS: TabKey[] = [
   "contracts",
   "upgrades",
   "research",
+  "facilities",
   "equipment",
   "forging",
   "alchemy",
@@ -66,6 +75,7 @@ type TabKey =
   | "contracts"
   | "upgrades"
   | "research"
+  | "facilities"
   | "equipment"
   | "forging"
   | "alchemy"
@@ -145,6 +155,7 @@ function App() {
         { key: "contracts", label: t("tab.contracts", undefined, locale) },
         { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
         { key: "research", label: t("tab.research", undefined, locale) },
+        { key: "facilities", label: t("tab.facilities", undefined, locale) },
         { key: "equipment", label: t("tab.equipment", undefined, locale) },
         { key: "forging", label: t("tab.forging", undefined, locale) },
         { key: "alchemy", label: t("tab.alchemy", undefined, locale) },
@@ -317,6 +328,10 @@ function App() {
 
   const handleUpdateSettings = (settings: Partial<GameState["settings"]>) => {
     setGameState((prev) => applyAction(prev, { type: "updateSettings", settings }));
+  };
+
+  const handleUpgradeFacility = (facilityId: FacilityId) => {
+    setGameState((prev) => applyAction(prev, { type: "upgradeFacility", facilityId }));
   };
 
   const handleImport = () => {
@@ -546,6 +561,8 @@ function App() {
     }),
     [locale]
   );
+  const facilities = useMemo(() => applyFacilityDefaults(gameState.facilities), [gameState.facilities]);
+  const facilityModifiers = useMemo(() => getFacilityModifiers(gameState), [gameState]);
   const autoAcceptModeLabels = useMemo(
     () => ({
       recommended: t("settings.autoAccept.mode.recommended", undefined, locale),
@@ -617,8 +634,8 @@ function App() {
     [gameState.equipped]
   );
   const effectiveOfflineCapMs = useMemo(
-    () => OFFLINE_CAP_MS + equipmentModifiers.offlineCapBonusMs,
-    [equipmentModifiers.offlineCapBonusMs]
+    () => OFFLINE_CAP_MS + equipmentModifiers.offlineCapBonusMs + facilityModifiers.offlineCapBonusMs,
+    [equipmentModifiers.offlineCapBonusMs, facilityModifiers.offlineCapBonusMs]
   );
   const formatAffixEffect = useCallback(
     (affixId: (typeof AFFIX_DEFINITIONS)[number]["id"], value: number, rarity: string) => {
@@ -717,6 +734,56 @@ function App() {
     },
     [locale]
   );
+  const formatFacilityEffects = useCallback(
+    (effects: ReturnType<typeof getFacilityEffectTotals>) => {
+      const parts: string[] = [];
+      if (effects.contractSlotsBonus > 0) {
+        parts.push(t("facilities.effect.contractSlots", { value: formatInt(effects.contractSlotsBonus, locale) }, locale));
+      }
+      if (effects.reputationGainMult !== 1) {
+        parts.push(
+          t("facilities.effect.reputation", { value: ((effects.reputationGainMult - 1) * 100).toFixed(1) }, locale)
+        );
+      }
+      if (effects.contractCostDiscount > 0) {
+        parts.push(
+          t("facilities.effect.contractCost", { value: (effects.contractCostDiscount * 100).toFixed(1) }, locale)
+        );
+      }
+      if (effects.alchemySpeedMult !== 1) {
+        parts.push(
+          t("facilities.effect.alchemySpeed", { value: ((effects.alchemySpeedMult - 1) * 100).toFixed(1) }, locale)
+        );
+      }
+      if (effects.buffDurationMult !== 1) {
+        parts.push(
+          t("facilities.effect.buffDuration", { value: ((effects.buffDurationMult - 1) * 100).toFixed(1) }, locale)
+        );
+      }
+      if (effects.forgingSpeedMult !== 1) {
+        parts.push(
+          t("facilities.effect.forgingSpeed", { value: ((effects.forgingSpeedMult - 1) * 100).toFixed(1) }, locale)
+        );
+      }
+      if (effects.disassembleYieldMult !== 1) {
+        parts.push(
+          t("facilities.effect.disassembleYield", { value: ((effects.disassembleYieldMult - 1) * 100).toFixed(1) }, locale)
+        );
+      }
+      if (effects.offlineCapBonusMs > 0) {
+        parts.push(
+          t("facilities.effect.offlineCap", { minutes: Math.round(effects.offlineCapBonusMs / 60000) }, locale)
+        );
+      }
+      if (effects.offlineEfficiencyMult !== 1) {
+        parts.push(
+          t("facilities.effect.offlineEfficiency", { value: ((effects.offlineEfficiencyMult - 1) * 100).toFixed(1) }, locale)
+        );
+      }
+      return parts.length > 0 ? parts.join(" / ") : t("facilities.effect.none", undefined, locale);
+    },
+    [locale]
+  );
   const glossaryEntries = useMemo(
     () => [
       {
@@ -755,7 +822,10 @@ function App() {
       gameState.contracts.slots.map((slot, index) => {
         const def = CONTRACT_DEFINITIONS.find((item) => item.id === slot.id);
         const requiredReputation = def?.requiredReputation ?? 0;
-        const acceptCost = def?.acceptCostEssence ?? 0;
+        const acceptCost = Math.max(
+          0,
+          Math.floor((def?.acceptCostEssence ?? 0) * (1 - facilityModifiers.contractCostDiscount))
+        );
         const requiredEssencePerSecond = def?.requiredEssencePerSecond ?? 0;
         const realmUnlocked = gameState.realm.unlockedContractIds.includes(slot.id);
         const isUnlocked = reputation >= requiredReputation;
@@ -806,7 +876,8 @@ function App() {
       gameState.production.perSecond,
       essence,
       gameState.realm.unlockedContractIds,
-      reputation
+      reputation,
+      facilityModifiers.contractCostDiscount
     ]
   );
   const visibleTabs = useMemo(
@@ -1279,6 +1350,77 @@ function App() {
         </section>
       ) : null}
 
+      {activeTab === "facilities" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("facilities.title", undefined, locale)}</h2>
+              <p className="muted small">{t("facilities.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t("facilities.balance", { essence: formatInt(essence, locale) }, locale)}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("facilities.summaryTitle", undefined, locale)}</h3>
+            <p className="muted small">{formatFacilityEffects(facilityModifiers)}</p>
+          </div>
+          <div className="upgrade-list">
+            {FACILITY_DEFINITIONS.map((facility) => {
+              const level = facilities[facility.id]?.level ?? 0;
+              const maxed = level >= facility.maxLevel;
+              const cost = maxed ? 0 : getFacilityUpgradeCost(gameState, facility.id);
+              const canAfford = essence >= cost;
+              const nextLevel = Math.min(facility.maxLevel, level + 1);
+              const currentEffects = getFacilityEffectTotals(facility, level);
+              const nextEffects = getFacilityEffectTotals(facility, nextLevel);
+              const nextSummary = formatFacilityEffects(nextEffects);
+              const disabledReason = maxed
+                ? t("facilities.reason.max", undefined, locale)
+                : !canAfford
+                  ? t("facilities.reason.cost", { cost: formatInt(cost, locale) }, locale)
+                  : null;
+              const buttonLabel = maxed ? t("facilities.max", undefined, locale) : t("facilities.upgrade", undefined, locale);
+              return (
+                <div className="upgrade-row" key={facility.id}>
+                  <div>
+                    <strong>{t(facility.nameKey as MessageKey, undefined, locale)}</strong>
+                    <p className="muted small">{t(facility.descriptionKey as MessageKey, undefined, locale)}</p>
+                    <p className="muted small">
+                      {t("facilities.level", { level: formatInt(level, locale), max: formatInt(facility.maxLevel, locale) }, locale)}
+                    </p>
+                    <p className="muted small">
+                      {t("facilities.currentEffects", { summary: formatFacilityEffects(currentEffects) }, locale)}
+                    </p>
+                    <p className="muted small">
+                      {maxed
+                        ? t("facilities.nextEffectMax", undefined, locale)
+                        : t("facilities.nextEffect", { summary: nextSummary }, locale)}
+                    </p>
+                  </div>
+                  <div className="upgrade-actions">
+                    <span className="cost">
+                      {maxed
+                        ? t("facilities.max", undefined, locale)
+                        : t("facilities.cost", { cost: formatInt(cost, locale) }, locale)}
+                    </span>
+                    <button
+                      className="action-button"
+                      onClick={() => handleUpgradeFacility(facility.id)}
+                      disabled={maxed || !canUpgradeFacility(gameState, facility.id)}
+                      title={disabledReason ?? undefined}
+                    >
+                      {buttonLabel}
+                    </button>
+                    {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {activeTab === "equipment" ? (
         <section className="card">
           <div className="card-header">
@@ -1322,7 +1464,7 @@ function App() {
                 "equipment.offlineSummary",
                 {
                   base: formatSeconds(OFFLINE_CAP_MS / 1000),
-                  bonusMinutes: Math.round(equipmentModifiers.offlineCapBonusMs / 60000)
+                  bonusMinutes: Math.round((equipmentModifiers.offlineCapBonusMs + facilityModifiers.offlineCapBonusMs) / 60000)
                 },
                 locale
               )}

@@ -31,7 +31,7 @@ export const REALM_DEFINITIONS: RealmDefinition[] = [
     descriptionKey: "realm.foundationNovice.description",
     breakthroughRequirement: {},
     unlocks: {
-      unlockTabs: ["realm", "contracts", "upgrades", "research", "equipment", "forging", "alchemy", "expeditions", "disciples", "ascend", "settings", "dev", "help"],
+      unlockTabs: ["realm", "contracts", "upgrades", "research", "facilities", "equipment", "forging", "alchemy", "expeditions", "disciples", "ascend", "settings", "dev", "help"],
       unlockContractIds: ["starter-recon", "essence-delivery", "lab-support", "field-analysis", "relay-maintenance", "artifact-catalog", "stabilize-array", "sealed-archive", "herb-gathering", "ore-survey"],
       unlockResearchIds: ["contractSpeed", "productionBoost", "extraContractSlot"],
       unlockRecipeIds: ["ember-elixir", "quicksign-tonic", "balanced-draught"]

@@ -3,6 +3,7 @@ import { ensureContractSlotCount } from "./contracts";
 import { findResearchDefinition, RESEARCH_DEFINITIONS, type ResearchId } from "./data/research";
 import type { GameState, ResearchState } from "./types";
 import { getResource } from "./resources";
+import { getFacilityModifiers } from "./facilities";
 
 export interface ResearchModifiers {
   productionMult: number;
@@ -70,8 +71,9 @@ export function applyResearchPurchase(state: GameState, id: ResearchId): GameSta
     }
   };
 
-  const modifiers = getResearchModifiers(updatedState);
-  const desiredSlots = BASE_CONTRACT_SLOTS + modifiers.contractSlotsBonus;
+  const researchModifiers = getResearchModifiers(updatedState);
+  const facilityModifiers = getFacilityModifiers(updatedState);
+  const desiredSlots = BASE_CONTRACT_SLOTS + researchModifiers.contractSlotsBonus + facilityModifiers.contractSlotsBonus;
   return ensureContractSlotCount(updatedState, desiredSlots);
 }
 

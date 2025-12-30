@@ -1,4 +1,4 @@
-import { acceptContract, completeContract, progressContracts } from "./contracts";
+import { acceptContract, completeContract, ensureContractSlotCount, progressContracts } from "./contracts";
 import { ascend } from "./progression";
 import { calculateProduction } from "./state";
 import type { Action, GameState } from "./types";
@@ -18,6 +18,8 @@ import {
 import { progressExpedition, startExpedition } from "./expeditions";
 import { mergeSettings } from "./settings";
 import { consumeItem, getBuffModifiers, progressAlchemy, startAlchemy, tickBuffs } from "./alchemy";
+import { applyUpgradeFacility, getFacilityModifiers } from "./facilities";
+import { BASE_CONTRACT_SLOTS } from "./data/constants";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -28,9 +30,10 @@ export function tick(state: GameState, dtMs: number): GameState {
   }
 
   const discipleModifiers = getDiscipleModifiers(state);
+  const facilityModifiers = getFacilityModifiers(state);
   const settings = mergeSettings(state.settings, {});
-  const progressedAlchemy = progressAlchemy(state, dtMs, discipleModifiers.alchemySpeedMult);
-  const progressed = progressForging(progressedAlchemy, dtMs, discipleModifiers.forgingSpeedMult);
+  const progressedAlchemy = progressAlchemy(state, dtMs, discipleModifiers.alchemySpeedMult * facilityModifiers.alchemySpeedMult);
+  const progressed = progressForging(progressedAlchemy, dtMs, discipleModifiers.forgingSpeedMult * facilityModifiers.forgingSpeedMult);
   const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
   const buffModifiers = getBuffModifiers(withGathering);
 
@@ -40,7 +43,6 @@ export function tick(state: GameState, dtMs: number): GameState {
   const nextResources = addResources(withGathering.resources, { essence: deltaEssence });
   const researchModifiers = getResearchModifiers(withGathering);
   const equipmentModifiers = getEquipmentModifiers(withGathering);
-
   const withResources: GameState = {
     ...withGathering,
     resources: nextResources,
@@ -53,7 +55,9 @@ export function tick(state: GameState, dtMs: number): GameState {
   const progressedContracts = progressContracts(
     withResources,
     dtMs,
-    researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult * buffModifiers.contractSpeedMult
+    researchModifiers.contractSpeedMult *
+      equipmentModifiers.contractSpeedMult *
+      buffModifiers.contractSpeedMult
   );
 
   const progressedExpedition = progressExpedition(progressedContracts, dtMs);
@@ -153,6 +157,17 @@ export function applyAction(state: GameState, action: Action): GameState {
       const updated = consumeItem(state, action.itemId);
       if (updated === state) return state;
       return calculateProduction(updated);
+    }
+    case "upgradeFacility": {
+      const upgraded = applyUpgradeFacility(state, action.facilityId);
+      if (upgraded === state) {
+        return state;
+      }
+      const researchModifiers = getResearchModifiers(upgraded);
+      const facilityModifiers = getFacilityModifiers(upgraded);
+      const desiredSlots = BASE_CONTRACT_SLOTS + researchModifiers.contractSlotsBonus + facilityModifiers.contractSlotsBonus;
+      const withContracts = ensureContractSlotCount(upgraded, desiredSlots);
+      return calculateProduction(withContracts);
     }
     case "updateSettings": {
       const settings = mergeSettings(state.settings, action.settings);

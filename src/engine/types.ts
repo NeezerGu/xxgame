@@ -5,10 +5,12 @@ import type { ResearchId } from "./data/research";
 import type { RealmId } from "./data/realms";
 import type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
 import type { AlchemyRecipeId, ConsumableId } from "./data/alchemy";
+import type { FacilityId } from "./data/facilities";
 
 export type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
 export type { RealmId } from "./data/realms";
 export type { AlchemyRecipeId, ConsumableId } from "./data/alchemy";
+export type { FacilityId } from "./data/facilities";
 
 export interface ProductionState {
   basePerSecond: number;
@@ -175,6 +177,8 @@ export interface ForgingQueueState {
   lastFinished?: EquipmentInstance | null;
 }
 
+export type FacilityState = Record<FacilityId, { level: number }>;
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
@@ -196,6 +200,7 @@ export interface GameState {
   alchemyQueue: AlchemyQueueState;
   consumables: ConsumableInventory;
   buffs: ActiveBuff[];
+  facilities: FacilityState;
 }
 
 export type Action =
@@ -215,4 +220,5 @@ export type Action =
   | { type: "startExpedition"; expeditionId: ExpeditionId; discipleId?: string | null }
   | { type: "startAlchemy"; recipeId: AlchemyRecipeId }
   | { type: "consumeItem"; itemId: ConsumableId }
-  | { type: "updateSettings"; settings: Partial<SettingsState> };
+  | { type: "updateSettings"; settings: Partial<SettingsState> }
+  | { type: "upgradeFacility"; facilityId: FacilityId };

@@ -14,8 +14,9 @@ import { createInitialAutomationState, createInitialDisciplesState, syncAutomati
 import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
 import { createDefaultSettings, mergeSettings } from "./settings";
 import type { SettingsState } from "./types";
+import { applyFacilityDefaults, createInitialFacilitiesState, getFacilityModifiers } from "./facilities";
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -82,7 +83,8 @@ export function createInitialState(nowMs: number): GameState {
     forgingQueue: createEmptyForgingQueue(),
     alchemyQueue: createEmptyAlchemyQueue(),
     consumables: createEmptyConsumables(),
-    buffs: []
+    buffs: [],
+    facilities: createInitialFacilitiesState()
   };
   return calculateProduction(base);
 }
@@ -160,6 +162,17 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
   if (save.schemaVersion === 10) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+  if (save.schemaVersion === 11 || save.schemaVersion === 12) {
     const migratedState: GameState = {
       ...(save as SerializedSave).state,
       schemaVersion: SCHEMA_VERSION
@@ -278,6 +291,7 @@ function applyStateDefaults(state: GameState): GameState {
   const alchemyQueue = withStarterEquipment.alchemyQueue ?? createEmptyAlchemyQueue();
   const consumables = createEmptyConsumables(withStarterEquipment.consumables);
   const buffs = withStarterEquipment.buffs ?? [];
+  const facilities = applyFacilityDefaults(withStarterEquipment.facilities);
   const withResources: GameState = {
     ...withStarterEquipment,
     schemaVersion: SCHEMA_VERSION,
@@ -313,12 +327,18 @@ function applyStateDefaults(state: GameState): GameState {
     forgingQueue,
     alchemyQueue,
     consumables,
-    buffs
+    buffs,
+    facilities
   };
 
   const desiredSlots =
-    BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
-  const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));
+    BASE_CONTRACT_SLOTS +
+    getResearchModifiers({ ...withResources, research }).contractSlotsBonus +
+    getFacilityModifiers({ ...withResources, facilities }).contractSlotsBonus;
+  const withContracts = ensureContractSlotCount(
+    withResources,
+    Math.max(desiredSlots, withResources.contracts.maxSlots)
+  );
 
   const withExpeditions = refreshExpeditionUnlocks({ ...withContracts, expeditions }, withContracts.realm.current);
 
