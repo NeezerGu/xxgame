@@ -10,6 +10,7 @@ import { disassembleItem, progressForging, startForging } from "./forging";
 import { applyDiscipleGathering, assignDiscipleRole, getDiscipleModifiers, recruitDisciple, runDiscipleAutomation } from "./disciples";
 import { progressExpedition, startExpedition } from "./expeditions";
 import { mergeSettings } from "./settings";
+import { consumeItem, getBuffModifiers, progressAlchemy, startAlchemy, tickBuffs } from "./alchemy";
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
 export function tick(state, dtMs) {
@@ -18,8 +19,10 @@ export function tick(state, dtMs) {
     }
     const discipleModifiers = getDiscipleModifiers(state);
     const settings = mergeSettings(state.settings, {});
-    const progressed = progressForging(state, dtMs, discipleModifiers.forgingSpeedMult);
+    const progressedAlchemy = progressAlchemy(state, dtMs, discipleModifiers.alchemySpeedMult);
+    const progressed = progressForging(progressedAlchemy, dtMs, discipleModifiers.forgingSpeedMult);
     const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
+    const buffModifiers = getBuffModifiers(withGathering);
     const perSecond = withGathering.production.perSecond;
     const deltaSeconds = dtMs / 1000;
     const deltaEssence = perSecond * deltaSeconds;
@@ -34,9 +37,11 @@ export function tick(state, dtMs) {
             essenceEarned: withGathering.runStats.essenceEarned + deltaEssence
         }
     };
-    const progressedContracts = progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult);
+    const progressedContracts = progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult * buffModifiers.contractSpeedMult);
     const progressedExpedition = progressExpedition(progressedContracts, dtMs);
-    return runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
+    const automated = runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
+    const buffTicked = tickBuffs(automated, dtMs);
+    return calculateProduction(buffTicked.state);
 }
 export function applyAction(state, action) {
     switch (action.type) {
@@ -117,6 +122,15 @@ export function applyAction(state, action) {
         }
         case "startExpedition": {
             return startExpedition(state, action.expeditionId, action.discipleId ?? null);
+        }
+        case "startAlchemy": {
+            return startAlchemy(state, action.recipeId);
+        }
+        case "consumeItem": {
+            const updated = consumeItem(state, action.itemId);
+            if (updated === state)
+                return state;
+            return calculateProduction(updated);
         }
         case "updateSettings": {
             const settings = mergeSettings(state.settings, action.settings);

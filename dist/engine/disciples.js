@@ -6,6 +6,8 @@ import { addResources, canAfford, spendResources } from "./resources";
 import { computeContractScore, DEFAULT_CONTRACT_WEIGHTS } from "./contractScore";
 import { createDefaultSettings, mergeSettings } from "./settings";
 import { startForging } from "./forging";
+import { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS } from "./data/alchemy";
+import { consumeItem, hasActiveBuff, isRecipeUnlocked, startAlchemy } from "./alchemy";
 export function createInitialDisciplesState() {
     return {
         roster: [],
@@ -125,6 +127,9 @@ export function runDiscipleAutomation(state, modifiers, settings = createDefault
     if (resolvedSettings.autoForging) {
         next = maybeAutoForge(next);
     }
+    if (resolvedSettings.autoAlchemy) {
+        next = maybeAutoAlchemy(next);
+    }
     return syncAutomation(next, modifiers);
 }
 export function syncAutomation(state, modifiers) {
@@ -216,6 +221,36 @@ function maybeAutoForge(state) {
     const chosen = sorted[0];
     const updated = startForging(state, chosen.id);
     return updated;
+}
+function maybeAutoAlchemy(state) {
+    let next = state;
+    const queue = next.alchemyQueue;
+    if (!queue || !queue.active) {
+        for (const recipe of ALCHEMY_RECIPES) {
+            if (!isRecipeUnlocked(next, recipe.id))
+                continue;
+            if (!canAfford(next.resources, recipe.cost))
+                continue;
+            const updated = startAlchemy(next, recipe.id);
+            if (updated !== next) {
+                next = updated;
+                break;
+            }
+        }
+    }
+    for (const item of CONSUMABLE_DEFINITIONS) {
+        const count = next.consumables?.[item.id] ?? 0;
+        if (count <= 0)
+            continue;
+        if (hasActiveBuff(next, item.id))
+            continue;
+        const updated = consumeItem(next, item.id);
+        if (updated !== next) {
+            next = updated;
+            break;
+        }
+    }
+    return next;
 }
 function getAutomationScore(def, mode, baseScore) {
     if (mode === "highestScore") {

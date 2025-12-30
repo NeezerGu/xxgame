@@ -8,10 +8,11 @@ import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { createEmptyResources } from "./resources";
 import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefaults } from "./equipment";
 import { createEmptyForgingQueue } from "./forging";
+import { createEmptyAlchemyQueue, createEmptyConsumables } from "./alchemy";
 import { createInitialAutomationState, createInitialDisciplesState, syncAutomation } from "./disciples";
 import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
 import { createDefaultSettings, mergeSettings } from "./settings";
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 function normalizeResources(resources) {
     return createEmptyResources(resources ?? {});
 }
@@ -57,7 +58,10 @@ export function createInitialState(nowMs) {
         expeditions: createInitialExpeditionState(getInitialRealmId()),
         settings: defaultSettings,
         equipped: createEmptyEquipped(),
-        forgingQueue: createEmptyForgingQueue()
+        forgingQueue: createEmptyForgingQueue(),
+        alchemyQueue: createEmptyAlchemyQueue(),
+        consumables: createEmptyConsumables(),
+        buffs: []
     };
     return calculateProduction(base);
 }
@@ -233,6 +237,9 @@ function applyStateDefaults(state) {
     const automation = withStarterEquipment.automation ?? createInitialAutomationState();
     const expeditions = withStarterEquipment.expeditions ?? createInitialExpeditionState(realm.current);
     const settings = mergeSettings(withStarterEquipment.settings, {});
+    const alchemyQueue = withStarterEquipment.alchemyQueue ?? createEmptyAlchemyQueue();
+    const consumables = createEmptyConsumables(withStarterEquipment.consumables);
+    const buffs = withStarterEquipment.buffs ?? [];
     const withResources = {
         ...withStarterEquipment,
         schemaVersion: SCHEMA_VERSION,
@@ -264,7 +271,10 @@ function applyStateDefaults(state) {
         automation,
         expeditions,
         settings,
-        forgingQueue
+        forgingQueue,
+        alchemyQueue,
+        consumables,
+        buffs
     };
     const desiredSlots = BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
     const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));

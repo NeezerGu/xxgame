@@ -13,6 +13,9 @@
 - `equipmentInventory`: { `items`: Record<instanceId, { blueprintId, slot, rarity, affixes: Array<{ affixId, value }> }>, `nextId`: number } — 装备背包，实例化后的装备记录稀有度与词缀数值。
 - `equipped`: Record<EquipmentSlot, string | null> — 每个槽位当前穿戴的装备实例 ID。
 - `forgingQueue`: { `active`: null | { blueprintId, remainingMs, totalMs, rarity, affixes }, `lastFinished`: EquipmentInstance | null } — 炼器队列，当前只允许单任务，完成后产物写入背包并记录最近完成的装备以供展示。
+- `alchemyQueue`: { `active`: null | { recipeId, remainingMs, totalMs }, `lastFinished`: { itemId, quantity } | null } — 炼丹队列，单任务模式，完成后向 `consumables` 库存写入。
+- `consumables`: Record<ConsumableId, number> — 丹药/消耗品库存（确定性生成，来源于炼丹）。
+- `buffs`: Array<{ id: ConsumableId, remainingMs: number, effects: { productionMult?, contractSpeedMult? } }> — 已服用丹药的持续增益，随 tick 衰减。
 - `disciples`: { `roster`: Array<{ id, archetypeId, aptitude, role }>, `nextId`: number, `nextArchetypeIndex`: number } — 弟子 roster，原型与岗位确定性生成，可分配岗位带来自动化或被动收益。
 - `automation`: { `autoClaimContracts`: boolean, `autoAcceptContracts`: boolean } — 自动化开关，由弟子岗位决定。
 - `settings`: { `autoClaimContracts`: boolean, `autoAcceptMode`: "recommended" | "highestScore" | "manual", `autoAlchemy`: boolean, `autoForging`: boolean } — 玩家侧的自动化偏好开关，仍需对应岗位或系统解锁后才生效。
@@ -37,6 +40,8 @@
 - `UNEQUIP(slot)` — 卸下槽位上的装备。
 - `START_FORGE(blueprintId)` — 队列空闲且材料足够时开始锻造，立即消耗成本并规划稀有度与词缀。
 - `DISASSEMBLE(instanceId)` — 分解装备实例，移出背包/装备位，并按稀有度倍率返还部分灵矿。
+- `START_ALCHEMY(recipeId)` — 队列空闲且材料满足时开始炼丹，消耗成本后排队，完成后向 consumables 入库对应丹药。
+- `CONSUME_ITEM(itemId)` — 服用指定丹药，消耗库存、附加持续 buff（productionMult/contractSpeedMult 等）。
 - `RECRUIT_DISCIPLE` — 消耗资源招募下一位弟子（按原型列表循环且无随机）。
 - `ASSIGN_DISCIPLE_ROLE(discipleId, role|null)` — 为弟子分配岗位，岗位作用于自动化或生产派生。
 - `START_EXPEDITION(id, discipleId?)` — 若无进行中的历练，则派出历练点位，记录日志并扣除必要成本（无并行）。

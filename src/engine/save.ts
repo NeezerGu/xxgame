@@ -9,12 +9,13 @@ import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { createEmptyResources } from "./resources";
 import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefaults } from "./equipment";
 import { createEmptyForgingQueue } from "./forging";
+import { createEmptyAlchemyQueue, createEmptyConsumables } from "./alchemy";
 import { createInitialAutomationState, createInitialDisciplesState, syncAutomation } from "./disciples";
 import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
 import { createDefaultSettings, mergeSettings } from "./settings";
 import type { SettingsState } from "./types";
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -78,7 +79,10 @@ export function createInitialState(nowMs: number): GameState {
     expeditions: createInitialExpeditionState(getInitialRealmId()),
     settings: defaultSettings,
     equipped: createEmptyEquipped(),
-    forgingQueue: createEmptyForgingQueue()
+    forgingQueue: createEmptyForgingQueue(),
+    alchemyQueue: createEmptyAlchemyQueue(),
+    consumables: createEmptyConsumables(),
+    buffs: []
   };
   return calculateProduction(base);
 }
@@ -216,7 +220,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
   }
 
   if (isLegacySerializedSaveV1(save)) {
-    const migratedState: GameState = {
+    const migratedState = {
       schemaVersion: SCHEMA_VERSION,
       seed: Math.max(1, Math.floor(save.savedAtMs % 1_000_000)),
       resources: createEmptyResources({
@@ -242,7 +246,7 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
       disciples: createInitialDisciplesState(),
       automation: createInitialAutomationState(),
       settings: createDefaultSettings()
-    };
+    } as unknown as GameState;
     return {
       schemaVersion: SCHEMA_VERSION,
       savedAtMs: save.savedAtMs,
@@ -271,6 +275,9 @@ function applyStateDefaults(state: GameState): GameState {
   const automation = withStarterEquipment.automation ?? createInitialAutomationState();
   const expeditions = withStarterEquipment.expeditions ?? createInitialExpeditionState(realm.current);
   const settings: SettingsState = mergeSettings(withStarterEquipment.settings, {});
+  const alchemyQueue = withStarterEquipment.alchemyQueue ?? createEmptyAlchemyQueue();
+  const consumables = createEmptyConsumables(withStarterEquipment.consumables);
+  const buffs = withStarterEquipment.buffs ?? [];
   const withResources: GameState = {
     ...withStarterEquipment,
     schemaVersion: SCHEMA_VERSION,
@@ -303,7 +310,10 @@ function applyStateDefaults(state: GameState): GameState {
     automation,
     expeditions,
     settings,
-    forgingQueue
+    forgingQueue,
+    alchemyQueue,
+    consumables,
+    buffs
   };
 
   const desiredSlots =

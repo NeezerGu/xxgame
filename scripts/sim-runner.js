@@ -2,12 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { DEFAULT_CONTRACT_WEIGHTS, computeContractScore } from "../dist/engine/contractScore.js";
 
-const DEFAULT_WEIGHTS = {
-  research: 3,
-  reputation: 2,
-  essence: 1
-};
+const DEFAULT_WEIGHTS = DEFAULT_CONTRACT_WEIGHTS;
 
 export const DEFAULT_CONFIG = {
   seconds: 600,
@@ -80,15 +77,16 @@ export function runBuild() {
 }
 
 function contractScore(def, weights) {
-  const rewardResearch = def.reward.research ?? 0;
-  const rewardReputation = def.reward.reputation ?? 0;
-  const rewardEssence = def.reward.essence ?? 0;
-  const durationSeconds = def.durationMs / 1000;
-  const numerator =
-    weights.research * rewardResearch +
-    weights.reputation * rewardReputation +
-    weights.essence * rewardEssence;
-  return durationSeconds > 0 ? numerator / durationSeconds : numerator;
+  return computeContractScore({
+    rewardResearch: def.reward.research,
+    rewardReputation: def.reward.reputation,
+    rewardEssence: def.reward.essence,
+    rewardHerb: def.reward.herb,
+    rewardOre: def.reward.ore,
+    acceptCostEssence: def.acceptCostEssence,
+    durationMs: def.durationMs,
+    weights
+  });
 }
 
 function canAcceptContract(state, slot, def) {
@@ -97,6 +95,7 @@ function canAcceptContract(state, slot, def) {
   const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
   const acceptCostEssence = def.acceptCostEssence ?? 0;
   const active = state.contracts.slots.filter((s) => s.status === "active").length;
+  if (!state.realm.unlockedContractIds.includes(def.id)) return false;
   if (active >= state.contracts.maxSlots) return false;
   if (state.resources.reputation < requiredReputation) return false;
   if (state.production.perSecond < requiredEssencePerSecond) return false;
@@ -133,16 +132,21 @@ export async function runSim(userConfig = {}) {
   const { getEquipmentModifiers } = await import("../dist/engine/equipment.js");
   const { DISCIPLE_RECRUIT_COST, DISCIPLE_ARCHETYPES } = await import("../dist/engine/data/disciples.js");
   const { EXPEDITION_DEFINITIONS } = await import("../dist/engine/data/expeditions.js");
+  const { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS } = await import("../dist/engine/data/alchemy.js");
+  const { isRecipeUnlocked } = await import("../dist/engine/alchemy.js");
 
   let state = createInitialState(config.seed);
   const totals = {
     ascends: 0,
     insightGained: 0,
     contractsAccepted: 0,
+    contractsAutoAccepted: 0,
     contractsCompleted: 0,
     upgradesPurchased: 0,
     researchPurchasedCount: 0,
-    disciplesRecruited: 0
+    disciplesRecruited: 0,
+    alchemyBrewed: 0,
+    consumablesUsed: 0
   };
 
   let elapsedMs = 0;
@@ -343,6 +347,34 @@ export async function runSim(userConfig = {}) {
     }
   }
 
+  function brewAlchemyIfPossible() {
+    if (state.alchemyQueue?.active) return;
+    for (const recipe of ALCHEMY_RECIPES) {
+      if (!isRecipeUnlocked(state, recipe.id)) continue;
+      const next = applyAction(state, { type: "startAlchemy", recipeId: recipe.id });
+      if (next !== state) {
+        totals.alchemyBrewed += 1;
+        state = next;
+        break;
+      }
+    }
+  }
+
+  function consumeConsumablesIfIdle() {
+    for (const item of CONSUMABLE_DEFINITIONS) {
+      const count = state.consumables?.[item.id] ?? 0;
+      if (count <= 0) continue;
+      const active = state.buffs?.some((buff) => buff.id === item.id && buff.remainingMs > 0);
+      if (active) continue;
+      const next = applyAction(state, { type: "consumeItem", itemId: item.id });
+      if (next !== state) {
+        totals.consumablesUsed += 1;
+        state = next;
+        break;
+      }
+    }
+  }
+
   function fillContracts() {
     while (true) {
       const active = state.contracts.slots.filter((slot) => slot.status === "active").length;
@@ -393,9 +425,30 @@ export async function runSim(userConfig = {}) {
     startForgingIfPossible();
     startExpeditionIfIdle();
     equipBestAvailable();
+    brewAlchemyIfPossible();
+    consumeConsumablesIfIdle();
 
+    const prevContractsCompleted = state.runStats.contractsCompleted;
+    const prevSlotStatuses = state.contracts.slots.map((slot) => slot.status);
     state = tick(state, config.tickMs);
     elapsedMs += config.tickMs;
+
+    let deltaCompleted = state.runStats.contractsCompleted - prevContractsCompleted;
+    if (deltaCompleted < 0) {
+      deltaCompleted = 0;
+    }
+    if (deltaCompleted > 0) {
+      totals.contractsCompleted += deltaCompleted;
+    }
+
+    const autoAccepted = state.contracts.slots.reduce((count, slot, index) => {
+      const prevStatus = prevSlotStatuses[index];
+      return prevStatus !== "active" && slot.status === "active" ? count + 1 : count;
+    }, 0);
+    if (autoAccepted > 0) {
+      totals.contractsAccepted += autoAccepted;
+      totals.contractsAutoAccepted += autoAccepted;
+    }
 
     if (timelineIntervalMs !== null && elapsedMs % timelineIntervalMs === 0) {
       timeline.push(snapshotState(state, totals, elapsedMs));
@@ -418,10 +471,13 @@ export async function runSim(userConfig = {}) {
       ascends: totals.ascends,
       insightGained: totals.insightGained,
       contractsAccepted: totals.contractsAccepted,
+      contractsAutoAccepted: totals.contractsAutoAccepted,
       contractsCompleted: totals.contractsCompleted,
       upgradesPurchased: totals.upgradesPurchased,
       researchPurchasedCount: totals.researchPurchasedCount,
-      disciplesRecruited: totals.disciplesRecruited
+      disciplesRecruited: totals.disciplesRecruited,
+      alchemyBrewed: totals.alchemyBrewed,
+      consumablesUsed: totals.consumablesUsed
     },
     final: {
       resources: state.resources,
@@ -430,6 +486,9 @@ export async function runSim(userConfig = {}) {
       researchPoints: state.resources.research,
       insight: state.resources.insight,
       essence: state.resources.essence,
+      alchemyQueue: state.alchemyQueue,
+      consumables: state.consumables,
+      buffs: state.buffs,
       runStats: state.runStats,
       disciples: state.disciples,
       automation: state.automation,
