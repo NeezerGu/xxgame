@@ -47,7 +47,7 @@ npm run sim:check -- --full # 同时检查 60 分钟基线
 脚本会写入文件并在 stdout 打印完整 JSON，结构包含：
 
 - `summary.config`: 运行参数。
-- `summary.totals`: 跨周目累计指标（飞升次数、洞察获取、接单/完成计数、购买次数）。
+- `summary.totals`: 跨周目累计指标（升华次数、洞察获取、接单/完成计数、购买次数）。
 - `summary.final`: 结束时的资源、每秒产出与当局 runStats。
 - `summary.purchasedResearch` / `summary.upgradesLevels`: 已购研究与升级等级。
 - `summary.timeline`: 按 `timelineEverySec` 采样的时间序列（秒、精华、EPS、洞察、声望、科研点、活跃契约数、累计完成量）。

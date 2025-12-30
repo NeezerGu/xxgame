@@ -190,7 +190,7 @@ async function main() {
       ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],
       contractRows
     ),
-    "## 历练/秘境",
+    "## 外勤探索",
     renderTable(["ID", "Duration(s)", "Rolls", "Stamina", "Required Realm", "Name Key", "Desc Key"], expeditionRows),
     "## 弟子原型",
     renderTable(["ID", "Base Aptitude", "Allowed Roles", "Name Key", "Description Key"], discipleRows),

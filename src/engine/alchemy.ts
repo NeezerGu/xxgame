@@ -1,4 +1,4 @@
-import { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS, findAlchemyRecipe, findConsumableDefinition } from "./data/alchemy";
+import { CONSUMABLE_DEFINITIONS, findAlchemyRecipe, findConsumableDefinition } from "./data/alchemy";
 import type {
   ActiveBuff,
   AlchemyQueueState,
