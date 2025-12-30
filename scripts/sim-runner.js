@@ -2,12 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { DEFAULT_CONTRACT_WEIGHTS, computeContractScore } from "../dist/engine/contractScore.js";
 
-const DEFAULT_WEIGHTS = {
-  research: 3,
-  reputation: 2,
-  essence: 1
-};
+const DEFAULT_WEIGHTS = DEFAULT_CONTRACT_WEIGHTS;
 
 export const DEFAULT_CONFIG = {
   seconds: 600,
@@ -80,15 +77,16 @@ export function runBuild() {
 }
 
 function contractScore(def, weights) {
-  const rewardResearch = def.reward.research ?? 0;
-  const rewardReputation = def.reward.reputation ?? 0;
-  const rewardEssence = def.reward.essence ?? 0;
-  const durationSeconds = def.durationMs / 1000;
-  const numerator =
-    weights.research * rewardResearch +
-    weights.reputation * rewardReputation +
-    weights.essence * rewardEssence;
-  return durationSeconds > 0 ? numerator / durationSeconds : numerator;
+  return computeContractScore({
+    rewardResearch: def.reward.research,
+    rewardReputation: def.reward.reputation,
+    rewardEssence: def.reward.essence,
+    rewardHerb: def.reward.herb,
+    rewardOre: def.reward.ore,
+    acceptCostEssence: def.acceptCostEssence,
+    durationMs: def.durationMs,
+    weights
+  });
 }
 
 function canAcceptContract(state, slot, def) {
@@ -97,6 +95,7 @@ function canAcceptContract(state, slot, def) {
   const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
   const acceptCostEssence = def.acceptCostEssence ?? 0;
   const active = state.contracts.slots.filter((s) => s.status === "active").length;
+  if (!state.realm.unlockedContractIds.includes(def.id)) return false;
   if (active >= state.contracts.maxSlots) return false;
   if (state.resources.reputation < requiredReputation) return false;
   if (state.production.perSecond < requiredEssencePerSecond) return false;
@@ -139,6 +138,7 @@ export async function runSim(userConfig = {}) {
     ascends: 0,
     insightGained: 0,
     contractsAccepted: 0,
+    contractsAutoAccepted: 0,
     contractsCompleted: 0,
     upgradesPurchased: 0,
     researchPurchasedCount: 0,
@@ -394,8 +394,27 @@ export async function runSim(userConfig = {}) {
     startExpeditionIfIdle();
     equipBestAvailable();
 
+    const prevContractsCompleted = state.runStats.contractsCompleted;
+    const prevSlotStatuses = state.contracts.slots.map((slot) => slot.status);
     state = tick(state, config.tickMs);
     elapsedMs += config.tickMs;
+
+    let deltaCompleted = state.runStats.contractsCompleted - prevContractsCompleted;
+    if (deltaCompleted < 0) {
+      deltaCompleted = 0;
+    }
+    if (deltaCompleted > 0) {
+      totals.contractsCompleted += deltaCompleted;
+    }
+
+    const autoAccepted = state.contracts.slots.reduce((count, slot, index) => {
+      const prevStatus = prevSlotStatuses[index];
+      return prevStatus !== "active" && slot.status === "active" ? count + 1 : count;
+    }, 0);
+    if (autoAccepted > 0) {
+      totals.contractsAccepted += autoAccepted;
+      totals.contractsAutoAccepted += autoAccepted;
+    }
 
     if (timelineIntervalMs !== null && elapsedMs % timelineIntervalMs === 0) {
       timeline.push(snapshotState(state, totals, elapsedMs));
@@ -418,6 +437,7 @@ export async function runSim(userConfig = {}) {
       ascends: totals.ascends,
       insightGained: totals.insightGained,
       contractsAccepted: totals.contractsAccepted,
+      contractsAutoAccepted: totals.contractsAutoAccepted,
       contractsCompleted: totals.contractsCompleted,
       upgradesPurchased: totals.upgradesPurchased,
       researchPurchasedCount: totals.researchPurchasedCount,
