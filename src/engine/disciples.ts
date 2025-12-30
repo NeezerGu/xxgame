@@ -21,6 +21,8 @@ import { addResources, canAfford, spendResources } from "./resources";
 import { computeContractScore, DEFAULT_CONTRACT_WEIGHTS } from "./contractScore";
 import { createDefaultSettings, mergeSettings } from "./settings";
 import { startForging } from "./forging";
+import { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS } from "./data/alchemy";
+import { consumeItem, hasActiveBuff, isRecipeUnlocked, startAlchemy } from "./alchemy";
 
 export interface DiscipleModifiers {
   autoClaimContracts: boolean;
@@ -165,6 +167,9 @@ export function runDiscipleAutomation(
   if (resolvedSettings.autoForging) {
     next = maybeAutoForge(next);
   }
+  if (resolvedSettings.autoAlchemy) {
+    next = maybeAutoAlchemy(next);
+  }
   return syncAutomation(next, modifiers);
 }
 
@@ -262,6 +267,35 @@ function maybeAutoForge(state: GameState): GameState {
   const chosen = sorted[0];
   const updated = startForging(state, chosen.id);
   return updated;
+}
+
+function maybeAutoAlchemy(state: GameState): GameState {
+  let next = state;
+  const queue = next.alchemyQueue;
+  if (!queue || !queue.active) {
+    for (const recipe of ALCHEMY_RECIPES) {
+      if (!isRecipeUnlocked(next, recipe.id)) continue;
+      if (!canAfford(next.resources, recipe.cost)) continue;
+      const updated = startAlchemy(next, recipe.id);
+      if (updated !== next) {
+        next = updated;
+        break;
+      }
+    }
+  }
+
+  for (const item of CONSUMABLE_DEFINITIONS) {
+    const count = next.consumables?.[item.id] ?? 0;
+    if (count <= 0) continue;
+    if (hasActiveBuff(next, item.id)) continue;
+    const updated = consumeItem(next, item.id);
+    if (updated !== next) {
+      next = updated;
+      break;
+    }
+  }
+
+  return next;
 }
 
 function getAutomationScore(def: (typeof CONTRACT_DEFINITIONS)[number], mode: AutoAcceptMode, baseScore: number): number {

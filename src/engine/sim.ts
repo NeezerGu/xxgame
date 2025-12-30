@@ -17,6 +17,7 @@ import {
 } from "./disciples";
 import { progressExpedition, startExpedition } from "./expeditions";
 import { mergeSettings } from "./settings";
+import { consumeItem, getBuffModifiers, progressAlchemy, startAlchemy, tickBuffs } from "./alchemy";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -28,8 +29,10 @@ export function tick(state: GameState, dtMs: number): GameState {
 
   const discipleModifiers = getDiscipleModifiers(state);
   const settings = mergeSettings(state.settings, {});
-  const progressed = progressForging(state, dtMs, discipleModifiers.forgingSpeedMult);
+  const progressedAlchemy = progressAlchemy(state, dtMs, discipleModifiers.alchemySpeedMult);
+  const progressed = progressForging(progressedAlchemy, dtMs, discipleModifiers.forgingSpeedMult);
   const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
+  const buffModifiers = getBuffModifiers(withGathering);
 
   const perSecond = withGathering.production.perSecond;
   const deltaSeconds = dtMs / 1000;
@@ -50,12 +53,14 @@ export function tick(state: GameState, dtMs: number): GameState {
   const progressedContracts = progressContracts(
     withResources,
     dtMs,
-    researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult
+    researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult * buffModifiers.contractSpeedMult
   );
 
   const progressedExpedition = progressExpedition(progressedContracts, dtMs);
 
-  return runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
+  const automated = runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
+  const buffTicked = tickBuffs(automated, dtMs);
+  return calculateProduction(buffTicked.state);
 }
 
 export function applyAction(state: GameState, action: Action): GameState {
@@ -140,6 +145,14 @@ export function applyAction(state: GameState, action: Action): GameState {
     }
     case "startExpedition": {
       return startExpedition(state, action.expeditionId, action.discipleId ?? null);
+    }
+    case "startAlchemy": {
+      return startAlchemy(state, action.recipeId);
+    }
+    case "consumeItem": {
+      const updated = consumeItem(state, action.itemId);
+      if (updated === state) return state;
+      return calculateProduction(updated);
     }
     case "updateSettings": {
       const settings = mergeSettings(state.settings, action.settings);

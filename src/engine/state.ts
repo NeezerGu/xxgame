@@ -9,6 +9,7 @@ import { addResources, createEmptyResources, getResource } from "./resources";
 import { getEquipmentModifiers } from "./equipment";
 import { syncAutomation } from "./disciples";
 import { createInitialExpeditionState } from "./expeditions";
+import { getBuffModifiers } from "./alchemy";
 
 export const BASE_PRODUCTION = 1;
 
@@ -31,8 +32,10 @@ export function calculateProduction(state: GameState): GameState {
 
   const researchModifiers = getResearchModifiers(state);
   const equipmentModifiers = getEquipmentModifiers(state);
+  const buffModifiers = getBuffModifiers(state);
   const insightMultiplier = 1 + getResource(state.resources, "insight") * INSIGHT_PROD_BONUS_PER_POINT;
-  const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier * equipmentModifiers.productionMult;
+  const multiplier =
+    upgradeMultiplier * researchModifiers.productionMult * insightMultiplier * equipmentModifiers.productionMult * buffModifiers.productionMult;
 
   const basePerSecond = BASE_PRODUCTION;
   const perSecond = (basePerSecond + additiveBonus) * multiplier;

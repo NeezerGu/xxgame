@@ -19,6 +19,8 @@ import {
   findAffixDefinition,
   findEquipmentBlueprint
 } from "@engine/data/equipment";
+import { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS, findAlchemyRecipe, findConsumableDefinition } from "@engine/data/alchemy";
+import { isRecipeUnlocked } from "@engine/alchemy";
 import {
   DISCIPLE_RECRUIT_COST,
   DISCIPLE_ROLE_EFFECTS,
@@ -50,6 +52,7 @@ const ALL_TABS: TabKey[] = [
   "research",
   "equipment",
   "forging",
+  "alchemy",
   "expeditions",
   "disciples",
   "ascend",
@@ -65,6 +68,7 @@ type TabKey =
   | "research"
   | "equipment"
   | "forging"
+  | "alchemy"
   | "expeditions"
   | "disciples"
   | "ascend"
@@ -143,6 +147,7 @@ function App() {
         { key: "research", label: t("tab.research", undefined, locale) },
         { key: "equipment", label: t("tab.equipment", undefined, locale) },
         { key: "forging", label: t("tab.forging", undefined, locale) },
+        { key: "alchemy", label: t("tab.alchemy", undefined, locale) },
         { key: "expeditions", label: t("tab.expeditions", undefined, locale) },
         { key: "disciples", label: t("tab.disciples", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
@@ -300,6 +305,14 @@ function App() {
 
   const handleStartExpedition = (expeditionId: ExpeditionId, discipleId: string | null) => {
     setGameState((prev) => applyAction(prev, { type: "startExpedition", expeditionId, discipleId }));
+  };
+
+  const handleStartAlchemy = (recipeId: (typeof ALCHEMY_RECIPES)[number]["id"]) => {
+    setGameState((prev) => applyAction(prev, { type: "startAlchemy", recipeId }));
+  };
+
+  const handleConsumeItem = (itemId: (typeof CONSUMABLE_DEFINITIONS)[number]["id"]) => {
+    setGameState((prev) => applyAction(prev, { type: "consumeItem", itemId }));
   };
 
   const handleUpdateSettings = (settings: Partial<GameState["settings"]>) => {
@@ -565,6 +578,20 @@ function App() {
   const activeForgeBlueprint = activeForge ? findEquipmentBlueprint(activeForge.blueprintId) : null;
   const forgingProgress = activeForge && activeForge.totalMs > 0 ? Math.min(1, 1 - activeForge.remainingMs / activeForge.totalMs) : 0;
   const lastForgedItem = forgingQueue.lastFinished;
+  const alchemyRecipes = useMemo(() => ALCHEMY_RECIPES.slice(), []);
+  const consumableDefinitions = useMemo(() => CONSUMABLE_DEFINITIONS.slice(), []);
+  const alchemyQueue = gameState.alchemyQueue ?? { active: null, lastFinished: null };
+  const activeAlchemy = alchemyQueue.active;
+  const activeAlchemyRecipe = activeAlchemy ? findAlchemyRecipe(activeAlchemy.recipeId) : null;
+  const alchemyProgress =
+    activeAlchemy && activeAlchemy.totalMs > 0 ? Math.min(1, 1 - activeAlchemy.remainingMs / activeAlchemy.totalMs) : 0;
+  const lastBrewed = alchemyQueue.lastFinished;
+  const unlockedRecipes = useMemo(
+    () => alchemyRecipes.filter((recipe) => isRecipeUnlocked(gameState, recipe.id)),
+    [alchemyRecipes, gameState]
+  );
+  const consumableInventory = gameState.consumables ?? {};
+  const activeBuffs = gameState.buffs ?? [];
   const activeExpedition = gameState.expeditions.active;
   const equippedEntries = useMemo(
     () => {
@@ -607,6 +634,19 @@ function App() {
         default:
           return "";
       }
+    },
+    [locale]
+  );
+  const formatConsumableEffect = useCallback(
+    (effects: { productionMult?: number; contractSpeedMult?: number }) => {
+      const parts: string[] = [];
+      if (effects.productionMult !== undefined) {
+        parts.push(t("alchemy.effect.productionMult", { value: ((effects.productionMult - 1) * 100).toFixed(1) }, locale));
+      }
+      if (effects.contractSpeedMult !== undefined) {
+        parts.push(t("alchemy.effect.contractSpeedMult", { value: ((effects.contractSpeedMult - 1) * 100).toFixed(1) }, locale));
+      }
+      return parts.join(" / ");
     },
     [locale]
   );
@@ -1483,6 +1523,145 @@ function App() {
         </section>
       ) : null}
 
+      {activeTab === "alchemy" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("alchemy.title", undefined, locale)}</h2>
+              <p className="muted small">{t("alchemy.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t(
+                "alchemy.materials",
+                { herb: formatInt(getResource(gameState.resources, "herb"), locale), essence: formatInt(essence, locale) },
+                locale
+              )}
+            </div>
+          </div>
+
+          <div className="grid two-columns">
+            <div className="help-section">
+              <h3>{t("alchemy.recipes", undefined, locale)}</h3>
+              {unlockedRecipes.length === 0 ? (
+                <p className="muted small">{t("alchemy.noRecipes", undefined, locale)}</p>
+              ) : (
+                <div className="upgrade-list">
+                  {unlockedRecipes.map((recipe) => {
+                    const costHerb = recipe.cost.herb ?? 0;
+                    const costEssence = recipe.cost.essence ?? 0;
+                    const hasHerb = getResource(gameState.resources, "herb") >= costHerb;
+                    const hasEssenceForRecipe = essence >= costEssence;
+                    const disabledReason = activeAlchemy
+                      ? t("alchemy.queueBusy", undefined, locale)
+                      : !hasHerb
+                        ? t("alchemy.needHerb", { amount: formatInt(costHerb, locale) }, locale)
+                        : !hasEssenceForRecipe
+                          ? t("alchemy.needEssence", { amount: formatInt(costEssence, locale) }, locale)
+                          : null;
+                    const outputDef = findConsumableDefinition(recipe.result.itemId);
+                    return (
+                      <div className="upgrade-row" key={recipe.id}>
+                        <div>
+                          <strong>{t(recipe.nameKey as MessageKey, undefined, locale)}</strong>
+                          <p className="muted small">{t(recipe.descriptionKey as MessageKey, undefined, locale)}</p>
+                          <p className="muted small">
+                            {t("alchemy.costLine", { herb: formatInt(costHerb, locale), essence: formatInt(costEssence, locale) }, locale)}
+                          </p>
+                          <p className="muted small">
+                            {t("alchemy.timeLine", { seconds: formatSeconds(recipe.durationMs / 1000) }, locale)}
+                          </p>
+                          <p className="muted small">
+                            {t("alchemy.outputLine", { name: t(outputDef.nameKey as MessageKey, undefined, locale) }, locale)}
+                          </p>
+                        </div>
+                        <div className="upgrade-actions">
+                          <button className="action-button" disabled={Boolean(disabledReason)} onClick={() => handleStartAlchemy(recipe.id)} title={disabledReason ?? undefined}>
+                            {t("alchemy.start", undefined, locale)}
+                          </button>
+                          {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="help-section">
+              <h3>{t("alchemy.queueTitle", undefined, locale)}</h3>
+              {activeAlchemy && activeAlchemyRecipe ? (
+                <div className="contract-row">
+                  <div className="contract-info">
+                    <div className="contract-title">
+                      <strong>{t(activeAlchemyRecipe.nameKey as MessageKey, undefined, locale)}</strong>
+                      <span className="status-pill status-active">{t("alchemy.inProgress", undefined, locale)}</span>
+                    </div>
+                    <p className="muted small">
+                      {t("alchemy.remaining", { seconds: formatSeconds(activeAlchemy.remainingMs / 1000) }, locale)}
+                    </p>
+                    <div className="progress-bar contract-progress">
+                      <div className="progress-fill" style={{ width: `${alchemyProgress * 100}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="muted small">{t("alchemy.idle", undefined, locale)}</p>
+              )}
+
+              <h3>{t("alchemy.inventoryTitle", undefined, locale)}</h3>
+              <div className="upgrade-list">
+                {consumableDefinitions.map((item) => {
+                  const count = consumableInventory[item.id] ?? 0;
+                  return (
+                    <div className="upgrade-row" key={item.id}>
+                      <div>
+                        <strong>{t(item.nameKey as MessageKey, undefined, locale)}</strong>
+                        <p className="muted small">{t(item.descriptionKey as MessageKey, undefined, locale)}</p>
+                        <p className="muted small">{formatConsumableEffect(item.effects)}</p>
+                        <p className="muted small">
+                          {t("alchemy.itemDuration", { seconds: formatSeconds(item.durationMs / 1000) }, locale)}
+                        </p>
+                        <p className="muted small">{t("alchemy.itemCount", { count }, locale)}</p>
+                      </div>
+                      <div className="upgrade-actions">
+                        <button className="action-button" disabled={count <= 0} onClick={() => handleConsumeItem(item.id)}>
+                          {t("alchemy.consume", undefined, locale)}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <h3>{t("alchemy.buffsTitle", undefined, locale)}</h3>
+              {activeBuffs.length === 0 ? (
+                <p className="muted small">{t("alchemy.noBuffs", undefined, locale)}</p>
+              ) : (
+                <ul className="muted small">
+                  {activeBuffs.map((buff, index) => {
+                    const def = findConsumableDefinition(buff.id);
+                    return (
+                      <li key={`${buff.id}-${index}`}>
+                        {t(def.nameKey as MessageKey, undefined, locale)} — {formatConsumableEffect(buff.effects)} ({formatSeconds(buff.remainingMs / 1000)})
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <h3>{t("alchemy.lastFinished", undefined, locale)}</h3>
+              {lastBrewed ? (
+                <p className="muted small">
+                  {t(findConsumableDefinition(lastBrewed.itemId).nameKey as MessageKey, undefined, locale)} × {lastBrewed.quantity}
+                </p>
+              ) : (
+                <p className="muted small">{t("alchemy.noLast", undefined, locale)}</p>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {activeTab === "expeditions" ? (
         <section className="card">
           <div className="card-header">
@@ -1892,13 +2071,17 @@ function App() {
                 <div className="contract-info">
                   <div className="contract-title">
                     <strong>{t("settings.autoAlchemy.label", undefined, locale)}</strong>
-                    <span className="status-pill status-idle">{t("settings.status.preview", undefined, locale)}</span>
+                    <span className="status-pill status-active">{t("settings.status.available", undefined, locale)}</span>
                   </div>
                   <p className="muted small">{t("settings.autoAlchemy.description", undefined, locale)}</p>
                 </div>
                 <div className="contract-actions">
                   <label className="muted small">
-                    <input type="checkbox" checked={settings.autoAlchemy} disabled />{" "}
+                    <input
+                      type="checkbox"
+                      checked={settings.autoAlchemy}
+                      onChange={(event) => handleUpdateSettings({ autoAlchemy: event.target.checked })}
+                    />{" "}
                     {t("settings.autoAlchemy.toggle", undefined, locale)}
                   </label>
                 </div>

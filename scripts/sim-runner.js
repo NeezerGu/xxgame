@@ -132,6 +132,8 @@ export async function runSim(userConfig = {}) {
   const { getEquipmentModifiers } = await import("../dist/engine/equipment.js");
   const { DISCIPLE_RECRUIT_COST, DISCIPLE_ARCHETYPES } = await import("../dist/engine/data/disciples.js");
   const { EXPEDITION_DEFINITIONS } = await import("../dist/engine/data/expeditions.js");
+  const { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS } = await import("../dist/engine/data/alchemy.js");
+  const { isRecipeUnlocked } = await import("../dist/engine/alchemy.js");
 
   let state = createInitialState(config.seed);
   const totals = {
@@ -142,7 +144,9 @@ export async function runSim(userConfig = {}) {
     contractsCompleted: 0,
     upgradesPurchased: 0,
     researchPurchasedCount: 0,
-    disciplesRecruited: 0
+    disciplesRecruited: 0,
+    alchemyBrewed: 0,
+    consumablesUsed: 0
   };
 
   let elapsedMs = 0;
@@ -343,6 +347,34 @@ export async function runSim(userConfig = {}) {
     }
   }
 
+  function brewAlchemyIfPossible() {
+    if (state.alchemyQueue?.active) return;
+    for (const recipe of ALCHEMY_RECIPES) {
+      if (!isRecipeUnlocked(state, recipe.id)) continue;
+      const next = applyAction(state, { type: "startAlchemy", recipeId: recipe.id });
+      if (next !== state) {
+        totals.alchemyBrewed += 1;
+        state = next;
+        break;
+      }
+    }
+  }
+
+  function consumeConsumablesIfIdle() {
+    for (const item of CONSUMABLE_DEFINITIONS) {
+      const count = state.consumables?.[item.id] ?? 0;
+      if (count <= 0) continue;
+      const active = state.buffs?.some((buff) => buff.id === item.id && buff.remainingMs > 0);
+      if (active) continue;
+      const next = applyAction(state, { type: "consumeItem", itemId: item.id });
+      if (next !== state) {
+        totals.consumablesUsed += 1;
+        state = next;
+        break;
+      }
+    }
+  }
+
   function fillContracts() {
     while (true) {
       const active = state.contracts.slots.filter((slot) => slot.status === "active").length;
@@ -393,6 +425,8 @@ export async function runSim(userConfig = {}) {
     startForgingIfPossible();
     startExpeditionIfIdle();
     equipBestAvailable();
+    brewAlchemyIfPossible();
+    consumeConsumablesIfIdle();
 
     const prevContractsCompleted = state.runStats.contractsCompleted;
     const prevSlotStatuses = state.contracts.slots.map((slot) => slot.status);
@@ -441,7 +475,9 @@ export async function runSim(userConfig = {}) {
       contractsCompleted: totals.contractsCompleted,
       upgradesPurchased: totals.upgradesPurchased,
       researchPurchasedCount: totals.researchPurchasedCount,
-      disciplesRecruited: totals.disciplesRecruited
+      disciplesRecruited: totals.disciplesRecruited,
+      alchemyBrewed: totals.alchemyBrewed,
+      consumablesUsed: totals.consumablesUsed
     },
     final: {
       resources: state.resources,
@@ -450,6 +486,9 @@ export async function runSim(userConfig = {}) {
       researchPoints: state.resources.research,
       insight: state.resources.insight,
       essence: state.resources.essence,
+      alchemyQueue: state.alchemyQueue,
+      consumables: state.consumables,
+      buffs: state.buffs,
       runStats: state.runStats,
       disciples: state.disciples,
       automation: state.automation,

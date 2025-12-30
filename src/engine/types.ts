@@ -4,9 +4,11 @@ import type { UpgradeId } from "./data/upgrades";
 import type { ResearchId } from "./data/research";
 import type { RealmId } from "./data/realms";
 import type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
+import type { AlchemyRecipeId, ConsumableId } from "./data/alchemy";
 
 export type { EquipmentSlot, EquipmentRarity, AffixId, EquipmentBlueprintId } from "./data/equipment";
 export type { RealmId } from "./data/realms";
+export type { AlchemyRecipeId, ConsumableId } from "./data/alchemy";
 
 export interface ProductionState {
   basePerSecond: number;
@@ -102,6 +104,28 @@ export interface AutomationState {
   autoAcceptContracts: boolean;
 }
 
+export interface ActiveBuff {
+  id: ConsumableId;
+  remainingMs: number;
+  effects: {
+    productionMult?: number;
+    contractSpeedMult?: number;
+  };
+}
+
+export interface AlchemyTask {
+  recipeId: AlchemyRecipeId;
+  remainingMs: number;
+  totalMs: number;
+}
+
+export interface AlchemyQueueState {
+  active: AlchemyTask | null;
+  lastFinished?: { itemId: ConsumableId; quantity: number } | null;
+}
+
+export type ConsumableInventory = Record<ConsumableId, number>;
+
 export interface ExpeditionActiveState {
   expeditionId: ExpeditionId;
   remainingMs: number;
@@ -169,6 +193,9 @@ export interface GameState {
   expeditions: ExpeditionState;
   settings: SettingsState;
   forgingQueue: ForgingQueueState;
+  alchemyQueue: AlchemyQueueState;
+  consumables: ConsumableInventory;
+  buffs: ActiveBuff[];
 }
 
 export type Action =
@@ -186,4 +213,6 @@ export type Action =
   | { type: "recruitDisciple" }
   | { type: "assignDiscipleRole"; discipleId: string; role: DiscipleRole | null }
   | { type: "startExpedition"; expeditionId: ExpeditionId; discipleId?: string | null }
+  | { type: "startAlchemy"; recipeId: AlchemyRecipeId }
+  | { type: "consumeItem"; itemId: ConsumableId }
   | { type: "updateSettings"; settings: Partial<SettingsState> };
