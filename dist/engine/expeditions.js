@@ -2,7 +2,7 @@ import { EXPEDITION_DEFINITIONS, findExpeditionDefinition } from "./data/expedit
 import { REALM_DEFINITIONS } from "./data/realms";
 import { nextRandom } from "./utils/rng";
 import { addResources } from "./resources";
-import { findEquipmentBlueprint } from "./data/equipment";
+import { AFFIX_DEFINITIONS, FORGING_AFFIX_COUNT, FORGING_RARITY_WEIGHTS, findEquipmentBlueprint } from "./data/equipment";
 import { calculateProduction } from "./state";
 const EVENT_INTERVAL_MS = 10000;
 export function createInitialExpeditionState(currentRealm) {
@@ -137,8 +137,7 @@ function resolveExpedition(state, active, seed) {
     for (let i = 0; i < rolls; i += 1) {
         const rewardRoll = pickReward(def.rewardTable, nextSeed);
         nextSeed = rewardRoll.nextSeed;
-        const reward = rewardRoll.reward;
-        rewards.push(reward);
+        let reward = rewardRoll.reward;
         if (reward.type === "resource") {
             nextState = {
                 ...nextState,
@@ -157,13 +156,12 @@ function resolveExpedition(state, active, seed) {
             }
         }
         else if (reward.type === "equipment") {
-            const blueprint = findEquipmentBlueprint(reward.blueprintId);
-            // equipment reward becomes ore to keep deterministic economy placeholder
-            nextState = {
-                ...nextState,
-                resources: addResources(nextState.resources, { ore: blueprint.cost.ore })
-            };
+            const equipmentResult = grantEquipmentReward(nextState, reward.blueprintId, nextSeed);
+            nextState = equipmentResult.state;
+            nextSeed = equipmentResult.seed;
+            reward = equipmentResult.reward;
         }
+        rewards.push(reward);
     }
     const resultLog = [...active.log, "expeditions.event.complete"];
     const result = {
@@ -192,7 +190,62 @@ function normalizeReward(entry) {
     if (entry.type === "recipe") {
         return { type: "recipe", recipeId: entry.recipeId };
     }
-    return { type: "equipment", blueprintId: entry.blueprintId };
+    return { type: "equipment", blueprintId: entry.blueprintId, instanceId: "", rarity: "common" };
+}
+function rollEquipmentRarity(seed) {
+    const roll = nextRandom(seed);
+    const totalWeight = Object.values(FORGING_RARITY_WEIGHTS).reduce((sum, value) => sum + value, 0);
+    const target = roll.value * totalWeight;
+    let cumulative = 0;
+    for (const [rarity, weight] of Object.entries(FORGING_RARITY_WEIGHTS)) {
+        cumulative += weight;
+        if (target <= cumulative) {
+            return { rarity, nextSeed: roll.nextSeed };
+        }
+    }
+    return { rarity: "common", nextSeed: roll.nextSeed };
+}
+function rollEquipmentAffixes(count, seed) {
+    const pool = [...AFFIX_DEFINITIONS];
+    const affixes = [];
+    let currentSeed = seed;
+    for (let i = 0; i < count && pool.length > 0; i += 1) {
+        const pickRoll = nextRandom(currentSeed);
+        currentSeed = pickRoll.nextSeed;
+        const index = Math.floor(pickRoll.value * pool.length);
+        const def = pool.splice(index, 1)[0];
+        const valueRoll = nextRandom(currentSeed);
+        currentSeed = valueRoll.nextSeed;
+        const value = def.min + (def.max - def.min) * valueRoll.value;
+        affixes.push({ affixId: def.id, value });
+    }
+    return { affixes, nextSeed: currentSeed };
+}
+function grantEquipmentReward(state, blueprintId, seed) {
+    const blueprint = findEquipmentBlueprint(blueprintId);
+    const rarityRoll = rollEquipmentRarity(seed);
+    const affixCount = FORGING_AFFIX_COUNT[rarityRoll.rarity];
+    const affixRoll = rollEquipmentAffixes(affixCount, rarityRoll.nextSeed);
+    const inventory = state.equipmentInventory;
+    const instanceId = `${inventory.nextId}`;
+    const newItem = {
+        instanceId,
+        blueprintId: blueprint.id,
+        slot: blueprint.slot,
+        rarity: rarityRoll.rarity,
+        affixes: affixRoll.affixes
+    };
+    return {
+        reward: { type: "equipment", blueprintId: blueprint.id, instanceId, rarity: rarityRoll.rarity },
+        seed: affixRoll.nextSeed,
+        state: {
+            ...state,
+            equipmentInventory: {
+                items: { ...inventory.items, [instanceId]: newItem },
+                nextId: inventory.nextId + 1
+            }
+        }
+    };
 }
 function applyExpeditionEvent(state, active, seed) {
     const eventPool = [

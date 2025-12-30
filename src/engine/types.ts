@@ -121,7 +121,7 @@ export interface ExpeditionResult {
 export type ExpeditionReward =
   | { type: "resource"; resourceId: ResourceId; amount: number }
   | { type: "recipe"; recipeId: string }
-  | { type: "equipment"; blueprintId: EquipmentBlueprintId };
+  | { type: "equipment"; blueprintId: EquipmentBlueprintId; instanceId: string; rarity: EquipmentRarity };
 
 export interface ExpeditionState {
   active: ExpeditionActiveState | null;

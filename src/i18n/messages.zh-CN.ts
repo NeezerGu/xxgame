@@ -217,7 +217,7 @@ export const zhCNMessages = {
   "expeditions.idleLabel": "可派遣新的历练",
   "expeditions.rewardLabel": "掉落",
   "expeditions.reward.recipe": "配方：{id}",
-  "expeditions.reward.equipment": "器胚线索：{id}",
+  "expeditions.reward.equipment": "获得装备：{name}（{rarity}），可在装备页查看",
   "expeditions.assignFollower": "随行弟子",
   "expeditions.noFollower": "无",
   "expeditions.reason.active": "已有历练进行中。",

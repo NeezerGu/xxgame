@@ -221,7 +221,7 @@ export const enUSMessages: Record<MessageKey, string> = {
   "expeditions.idleLabel": "No expedition running",
   "expeditions.rewardLabel": "Loot",
   "expeditions.reward.recipe": "Recipe: {id}",
-  "expeditions.reward.equipment": "Blueprint shard: {id}",
+  "expeditions.reward.equipment": "Equipment: {name} ({rarity}) — check Equipment tab",
   "expeditions.assignFollower": "Follower",
   "expeditions.noFollower": "None",
   "expeditions.reason.active": "Expedition already active.",

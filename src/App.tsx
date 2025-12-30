@@ -4,7 +4,7 @@ import { ASCEND_THRESHOLD, calculateInsightGain, canAscend } from "@engine/progr
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
-import type { EquipmentSlot, GameState, ResourceId } from "@engine/types";
+import type { EquipmentSlot, ExpeditionReward, GameState, ResourceId } from "@engine/types";
 import { mergeSettings } from "@engine/settings";
 import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
@@ -659,14 +659,18 @@ function App() {
     [locale]
   );
   const formatExpeditionReward = useCallback(
-    (reward: { type: "resource"; resourceId: ResourceId; amount: number } | { type: "recipe"; recipeId: string } | { type: "equipment"; blueprintId: string }) => {
+    (reward: ExpeditionReward) => {
       switch (reward.type) {
         case "resource":
           return `${t(`stats.${reward.resourceId}` as MessageKey, undefined, locale)} +${formatCompact(reward.amount, { maxDecimals: 1 })}`;
         case "recipe":
           return t("expeditions.reward.recipe", { id: reward.recipeId }, locale);
-        case "equipment":
-          return t("expeditions.reward.equipment", { id: reward.blueprintId }, locale);
+        case "equipment": {
+          const blueprint = findEquipmentBlueprint(reward.blueprintId);
+          const rarity = t(`equipment.rarity.${reward.rarity}` as MessageKey, undefined, locale);
+          const name = t(blueprint.nameKey as MessageKey, undefined, locale);
+          return t("expeditions.reward.equipment", { name, rarity }, locale);
+        }
         default:
           return "";
       }
