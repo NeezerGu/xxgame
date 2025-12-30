@@ -148,6 +148,53 @@ describe("disciples", () => {
     expect(progressed.runStats.contractsCompleted).toBe(prepared.runStats.contractsCompleted + 1);
     expect(progressed.contracts.slots.some((slot) => slot.status === "active")).toBe(true);
   });
+
+  it("respects settings when automation is disabled", () => {
+    const base = createInitialState(0);
+    const slotIndex = base.contracts.slots.findIndex((slot) => slot.id === "starter-recon");
+    const slots = base.contracts.slots.slice();
+    slots[slotIndex] = { ...slots[slotIndex], status: "completed", elapsedMs: slots[slotIndex].durationMs };
+    const withDisciple: GameState = {
+      ...base,
+      contracts: { ...base.contracts, slots },
+      disciples: {
+        ...base.disciples,
+        roster: [
+          {
+            id: "d1",
+            archetypeId: "ledger-adept",
+            aptitude: 1,
+            role: "contractClerk"
+          }
+        ]
+      }
+    };
+    const disabled = applyAction(withDisciple, {
+      type: "updateSettings",
+      settings: { autoClaimContracts: false, autoAcceptMode: "manual" }
+    });
+
+    const progressed = tick(disabled, 1000);
+
+    expect(progressed.contracts.slots[slotIndex].status).toBe("completed");
+  });
+
+  it("auto-starts forging when enabled in settings", () => {
+    const base = createInitialState(0);
+    const funded: GameState = {
+      ...base,
+      resources: {
+        ...base.resources,
+        essence: 100,
+        ore: 50
+      }
+    };
+
+    const progressed = tick(funded, 100);
+
+    expect(progressed.forgingQueue.active).not.toBeNull();
+    expect(progressed.forgingQueue.active?.blueprintId).toBe("ember-shiv");
+  });
 });
 
 describe("expeditions", () => {

@@ -129,6 +129,15 @@ export interface ExpeditionState {
   unlockedExpeditions: Record<ExpeditionId, boolean>;
 }
 
+export type AutoAcceptMode = "recommended" | "highestScore" | "manual";
+
+export interface SettingsState {
+  autoClaimContracts: boolean;
+  autoAcceptMode: AutoAcceptMode;
+  autoAlchemy: boolean;
+  autoForging: boolean;
+}
+
 export interface ForgingTask {
   blueprintId: EquipmentBlueprintId;
   remainingMs: number;
@@ -158,6 +167,7 @@ export interface GameState {
   disciples: DisciplesState;
   automation: AutomationState;
   expeditions: ExpeditionState;
+  settings: SettingsState;
   forgingQueue: ForgingQueueState;
 }
 
@@ -175,4 +185,5 @@ export type Action =
   | { type: "disassemble"; instanceId: string }
   | { type: "recruitDisciple" }
   | { type: "assignDiscipleRole"; discipleId: string; role: DiscipleRole | null }
-  | { type: "startExpedition"; expeditionId: ExpeditionId; discipleId?: string | null };
+  | { type: "startExpedition"; expeditionId: ExpeditionId; discipleId?: string | null }
+  | { type: "updateSettings"; settings: Partial<SettingsState> };

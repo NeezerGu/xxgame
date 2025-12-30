@@ -6,10 +6,21 @@ import {
   findDiscipleArchetype,
   type DiscipleRole
 } from "./data/disciples";
-import type { AutomationState, ContractSlot, DiscipleInstance, DisciplesState, GameState } from "./types";
+import { EQUIPMENT_BLUEPRINTS } from "./data/equipment";
+import type {
+  AutomationState,
+  AutoAcceptMode,
+  ContractSlot,
+  DiscipleInstance,
+  DisciplesState,
+  GameState,
+  SettingsState
+} from "./types";
 import { acceptContract, canAcceptContract, completeContract } from "./contracts";
 import { addResources, canAfford, spendResources } from "./resources";
 import { computeContractScore, DEFAULT_CONTRACT_WEIGHTS } from "./contractScore";
+import { createDefaultSettings, mergeSettings } from "./settings";
+import { startForging } from "./forging";
 
 export interface DiscipleModifiers {
   autoClaimContracts: boolean;
@@ -137,22 +148,31 @@ export function applyDiscipleGathering(state: GameState, dtMs: number, modifiers
   };
 }
 
-export function runDiscipleAutomation(state: GameState, modifiers: DiscipleModifiers): GameState {
-  let next = state;
-  if (modifiers.autoClaimContracts) {
+export function runDiscipleAutomation(
+  state: GameState,
+  modifiers: DiscipleModifiers,
+  settings: SettingsState = createDefaultSettings()
+): GameState {
+  const synced = syncAutomation(state, modifiers);
+  const resolvedSettings = mergeSettings(settings, {});
+  let next = synced;
+  if (modifiers.autoClaimContracts && resolvedSettings.autoClaimContracts) {
     next = claimCompletedContracts(next);
   }
-  if (modifiers.autoAcceptContracts) {
-    next = acceptTopContracts(next);
+  if (modifiers.autoAcceptContracts && resolvedSettings.autoAcceptMode !== "manual") {
+    next = acceptTopContracts(next, resolvedSettings.autoAcceptMode);
   }
-  return syncAutomation(next);
+  if (resolvedSettings.autoForging) {
+    next = maybeAutoForge(next);
+  }
+  return syncAutomation(next, modifiers);
 }
 
-export function syncAutomation(state: GameState): GameState {
-  const modifiers = getDiscipleModifiers(state);
+export function syncAutomation(state: GameState, modifiers?: DiscipleModifiers): GameState {
+  const resolvedModifiers = modifiers ?? getDiscipleModifiers(state);
   if (
-    state.automation.autoAcceptContracts === modifiers.autoAcceptContracts &&
-    state.automation.autoClaimContracts === modifiers.autoClaimContracts
+    state.automation.autoAcceptContracts === resolvedModifiers.autoAcceptContracts &&
+    state.automation.autoClaimContracts === resolvedModifiers.autoClaimContracts
   ) {
     return state;
   }
@@ -160,8 +180,8 @@ export function syncAutomation(state: GameState): GameState {
   return {
     ...state,
     automation: {
-      autoAcceptContracts: modifiers.autoAcceptContracts,
-      autoClaimContracts: modifiers.autoClaimContracts
+      autoAcceptContracts: resolvedModifiers.autoAcceptContracts,
+      autoClaimContracts: resolvedModifiers.autoClaimContracts
     }
   };
 }
@@ -178,7 +198,7 @@ function claimCompletedContracts(state: GameState): GameState {
   return next;
 }
 
-function acceptTopContracts(state: GameState): GameState {
+function acceptTopContracts(state: GameState, mode: AutoAcceptMode): GameState {
   let next = state;
   while (true) {
     const candidates = CONTRACT_DEFINITIONS.flatMap((def) => {
@@ -207,7 +227,9 @@ function acceptTopContracts(state: GameState): GameState {
     }
 
     candidates.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+      const scoreA = getAutomationScore(a.def, mode, a.score);
+      const scoreB = getAutomationScore(b.def, mode, b.score);
+      if (Math.abs(scoreB - scoreA) > 1e-9) return scoreB - scoreA;
       return a.def.id.localeCompare(b.def.id);
     });
 
@@ -222,4 +244,31 @@ function acceptTopContracts(state: GameState): GameState {
 
 function findSlot(state: GameState, contractId: string): ContractSlot | undefined {
   return state.contracts.slots.find((slot) => slot.id === contractId);
+}
+
+function maybeAutoForge(state: GameState): GameState {
+  const queue = state.forgingQueue;
+  if (!queue || queue.active) {
+    return state;
+  }
+  const affordable = EQUIPMENT_BLUEPRINTS.filter((bp) => canAfford(state.resources, bp.cost));
+  if (affordable.length === 0) {
+    return state;
+  }
+  const sorted = affordable.sort((a, b) => {
+    if (Math.abs(b.basePower - a.basePower) > 1e-9) return b.basePower - a.basePower;
+    return a.id.localeCompare(b.id);
+  });
+  const chosen = sorted[0];
+  const updated = startForging(state, chosen.id);
+  return updated;
+}
+
+function getAutomationScore(def: (typeof CONTRACT_DEFINITIONS)[number], mode: AutoAcceptMode, baseScore: number): number {
+  if (mode === "highestScore") {
+    return baseScore;
+  }
+  const researchBonus = (def.reward.research ?? 0) > 0 ? 0.25 : 0;
+  const reputationBonus = (def.reward.reputation ?? 0) > 0 ? 0.1 : 0;
+  return baseScore + researchBonus + reputationBonus;
 }

@@ -9,6 +9,7 @@ import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
 import { disassembleItem, progressForging, startForging } from "./forging";
 import { applyDiscipleGathering, assignDiscipleRole, getDiscipleModifiers, recruitDisciple, runDiscipleAutomation } from "./disciples";
 import { progressExpedition, startExpedition } from "./expeditions";
+import { mergeSettings } from "./settings";
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
 export function tick(state, dtMs) {
@@ -16,6 +17,7 @@ export function tick(state, dtMs) {
         return state;
     }
     const discipleModifiers = getDiscipleModifiers(state);
+    const settings = mergeSettings(state.settings, {});
     const progressed = progressForging(state, dtMs, discipleModifiers.forgingSpeedMult);
     const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
     const perSecond = withGathering.production.perSecond;
@@ -34,7 +36,7 @@ export function tick(state, dtMs) {
     };
     const progressedContracts = progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult);
     const progressedExpedition = progressExpedition(progressedContracts, dtMs);
-    return runDiscipleAutomation(progressedExpedition, discipleModifiers);
+    return runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
 }
 export function applyAction(state, action) {
     switch (action.type) {
@@ -115,6 +117,13 @@ export function applyAction(state, action) {
         }
         case "startExpedition": {
             return startExpedition(state, action.expeditionId, action.discipleId ?? null);
+        }
+        case "updateSettings": {
+            const settings = mergeSettings(state.settings, action.settings);
+            return {
+                ...state,
+                settings
+            };
         }
         default: {
             return state;

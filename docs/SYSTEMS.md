@@ -15,6 +15,7 @@
 - `forgingQueue`: { `active`: null | { blueprintId, remainingMs, totalMs, rarity, affixes }, `lastFinished`: EquipmentInstance | null } — 炼器队列，当前只允许单任务，完成后产物写入背包并记录最近完成的装备以供展示。
 - `disciples`: { `roster`: Array<{ id, archetypeId, aptitude, role }>, `nextId`: number, `nextArchetypeIndex`: number } — 弟子 roster，原型与岗位确定性生成，可分配岗位带来自动化或被动收益。
 - `automation`: { `autoClaimContracts`: boolean, `autoAcceptContracts`: boolean } — 自动化开关，由弟子岗位决定。
+- `settings`: { `autoClaimContracts`: boolean, `autoAcceptMode`: "recommended" | "highestScore" | "manual", `autoAlchemy`: boolean, `autoForging`: boolean } — 玩家侧的自动化偏好开关，仍需对应岗位或系统解锁后才生效。
 - `expeditions`: { `active`: null | { expeditionId, remainingMs, totalMs, log: string[], discipleId, nextEventMs, rewardRollsRemaining }, `lastResult`: { expeditionId, rewards, log } | null, `unlockedExpeditions`: Record<id, boolean> } — 历练/秘境状态，记录进行中的任务、事件日志、掉落以及解锁表。
 - `contracts`: {
   - `slots`: Array<{ id: string, status: 'idle' | 'active' | 'completed', `durationMs`: number, `elapsedMs`: number, `reward`: Partial<Record<ResourceId, number>> }>;
@@ -39,6 +40,7 @@
 - `RECRUIT_DISCIPLE` — 消耗资源招募下一位弟子（按原型列表循环且无随机）。
 - `ASSIGN_DISCIPLE_ROLE(discipleId, role|null)` — 为弟子分配岗位，岗位作用于自动化或生产派生。
 - `START_EXPEDITION(id, discipleId?)` — 若无进行中的历练，则派出历练点位，记录日志并扣除必要成本（无并行）。
+- `UPDATE_SETTINGS(partial)` — 按玩家选择更新自动化偏好。
 - `ASCEND` — 触发软重置并计算 Insight。
 - `BREAKTHROUGH` — 当满足下一境界条件时，切换至下一境界并应用对应解锁。
 - `IMPORT_SAVE(payload)` / `EXPORT_SAVE()` — 读写存档字符串。
@@ -52,7 +54,7 @@
 - `TICK(dtMs)`
   - 前置：dtMs >= 0；使用确定性 tick（例如固定 50ms 步长切片）。
   - 变更：增加 Essence（考虑升级/研究/Insight 乘区）；推进 active 契约 `elapsedMs`，若达到 duration 切换为 completed 或 failed；更新 `elapsedOffline`（离线模拟时）；将炼器进度按乘区推进；若有采集类岗位则被动增加 herb/ore；推进历练计时并在事件点触发随机事件。
-  - 派生：重新计算 `rates`、Ascend 进度、可用契约池；若开启自动化则自动领取完成契约并按评分接取可用契约；历练完成时按掉落表发放奖励并写入日志。
+  - 派生：重新计算 `rates`、Ascend 进度、可用契约池；若开启自动化且玩家在设置中启用，对应岗位会自动领取完成契约、按策略接取可用契约，并在队列空闲时自动开始可负担的炼器；历练完成时按掉落表发放奖励并写入日志。
 - `FOCUS`
   - 前置：冷却结束；玩家非自动化状态。
   - 变更：即时增加 Essence，重置冷却计时。

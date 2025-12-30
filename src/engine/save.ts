@@ -11,8 +11,10 @@ import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefa
 import { createEmptyForgingQueue } from "./forging";
 import { createInitialAutomationState, createInitialDisciplesState, syncAutomation } from "./disciples";
 import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
+import { createDefaultSettings, mergeSettings } from "./settings";
+import type { SettingsState } from "./types";
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 interface LegacyGameStateV1 {
   schemaVersion: number;
@@ -39,6 +41,7 @@ function isLegacySerializedSaveV1(save: SerializedSave | LegacySerializedSaveV1)
 
 export function createInitialState(nowMs: number): GameState {
   const seed = Math.max(1, Math.floor(nowMs % 1_000_000));
+  const defaultSettings: SettingsState = createDefaultSettings();
   const starterEquipment: EquipmentInstance = {
     instanceId: "1",
     blueprintId: "ember-shiv",
@@ -73,6 +76,7 @@ export function createInitialState(nowMs: number): GameState {
     disciples: createInitialDisciplesState(),
     automation: createInitialAutomationState(),
     expeditions: createInitialExpeditionState(getInitialRealmId()),
+    settings: defaultSettings,
     equipped: createEmptyEquipped(),
     forgingQueue: createEmptyForgingQueue()
   };
@@ -141,6 +145,17 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
     };
   }
   if (save.schemaVersion === 9) {
+    const migratedState: GameState = {
+      ...(save as SerializedSave).state,
+      schemaVersion: SCHEMA_VERSION
+    } as GameState;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      savedAtMs: (save as SerializedSave).savedAtMs ?? Date.now(),
+      state: applyStateDefaults(migratedState)
+    };
+  }
+  if (save.schemaVersion === 10) {
     const migratedState: GameState = {
       ...(save as SerializedSave).state,
       schemaVersion: SCHEMA_VERSION
@@ -225,7 +240,8 @@ export function migrateToLatest(save: SerializedSave | LegacySerializedSaveV1): 
       forgingQueue: createEmptyForgingQueue(),
       expeditions: createInitialExpeditionState(getInitialRealmId()),
       disciples: createInitialDisciplesState(),
-      automation: createInitialAutomationState()
+      automation: createInitialAutomationState(),
+      settings: createDefaultSettings()
     };
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -254,6 +270,7 @@ function applyStateDefaults(state: GameState): GameState {
   const disciples = withStarterEquipment.disciples ?? createInitialDisciplesState();
   const automation = withStarterEquipment.automation ?? createInitialAutomationState();
   const expeditions = withStarterEquipment.expeditions ?? createInitialExpeditionState(realm.current);
+  const settings: SettingsState = mergeSettings(withStarterEquipment.settings, {});
   const withResources: GameState = {
     ...withStarterEquipment,
     schemaVersion: SCHEMA_VERSION,
@@ -285,6 +302,7 @@ function applyStateDefaults(state: GameState): GameState {
     disciples,
     automation,
     expeditions,
+    settings,
     forgingQueue
   };
 

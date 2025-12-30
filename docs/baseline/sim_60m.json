@@ -59,6 +59,12 @@
       "automation": {
         "autoAcceptContracts": true,
         "autoClaimContracts": true
+      },
+      "settings": {
+        "autoClaimContracts": true,
+        "autoAcceptMode": "recommended",
+        "autoAlchemy": false,
+        "autoForging": true
       }
     },
     "purchasedResearch": [

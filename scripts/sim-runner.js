@@ -432,7 +432,8 @@ export async function runSim(userConfig = {}) {
       essence: state.resources.essence,
       runStats: state.runStats,
       disciples: state.disciples,
-      automation: state.automation
+      automation: state.automation,
+      settings: state.settings
     },
     purchasedResearch,
     upgradesLevels: state.upgrades

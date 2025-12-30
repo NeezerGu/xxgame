@@ -5,6 +5,7 @@ import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
 import type { EquipmentSlot, GameState, ResourceId } from "@engine/types";
+import { mergeSettings } from "@engine/settings";
 import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
@@ -52,6 +53,7 @@ const ALL_TABS: TabKey[] = [
   "expeditions",
   "disciples",
   "ascend",
+  "settings",
   "dev",
   "help"
 ];
@@ -66,6 +68,7 @@ type TabKey =
   | "expeditions"
   | "disciples"
   | "ascend"
+  | "settings"
   | "dev"
   | "help";
 type ContractSortMode = "default" | "score";
@@ -143,6 +146,7 @@ function App() {
         { key: "expeditions", label: t("tab.expeditions", undefined, locale) },
         { key: "disciples", label: t("tab.disciples", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
+        { key: "settings", label: t("tab.settings", undefined, locale) },
         { key: "dev", label: t("tab.dev", undefined, locale) },
         { key: "help", label: t("tab.help", undefined, locale) }
       ] as const,
@@ -298,6 +302,10 @@ function App() {
     setGameState((prev) => applyAction(prev, { type: "startExpedition", expeditionId, discipleId }));
   };
 
+  const handleUpdateSettings = (settings: Partial<GameState["settings"]>) => {
+    setGameState((prev) => applyAction(prev, { type: "updateSettings", settings }));
+  };
+
   const handleImport = () => {
     try {
       const parsed = deserialize(importText);
@@ -373,6 +381,7 @@ function App() {
   const insightValue = getResource(gameState.resources, "insight");
   const herbValue = getResource(gameState.resources, "herb");
   const oreValue = getResource(gameState.resources, "ore");
+  const settings = useMemo(() => mergeSettings(gameState.settings, {}), [gameState.settings]);
 
   const ascendProgress = Math.min(1, essence / ASCEND_THRESHOLD);
   const ascendReady = canAscend(gameState);
@@ -521,6 +530,14 @@ function App() {
       uncommon: t("equipment.rarity.uncommon", undefined, locale),
       rare: t("equipment.rarity.rare", undefined, locale),
       epic: t("equipment.rarity.epic", undefined, locale)
+    }),
+    [locale]
+  );
+  const autoAcceptModeLabels = useMemo(
+    () => ({
+      recommended: t("settings.autoAccept.mode.recommended", undefined, locale),
+      highestScore: t("settings.autoAccept.mode.highestScore", undefined, locale),
+      manual: t("settings.autoAccept.mode.manual", undefined, locale)
     }),
     [locale]
   );
@@ -1758,6 +1775,131 @@ function App() {
               },
               locale
             )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("settings.title", undefined, locale)}</h2>
+              <p className="muted small">{t("settings.description", undefined, locale)}</p>
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("settings.automationTitle", undefined, locale)}</h3>
+            <div className="contract-list">
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoClaim.label", undefined, locale)}</strong>
+                    <span
+                      className={`status-pill ${
+                        gameState.automation.autoClaimContracts ? "status-active" : "status-idle"
+                      }`}
+                    >
+                      {gameState.automation.autoClaimContracts
+                        ? t("settings.status.available", undefined, locale)
+                        : t("settings.status.locked", undefined, locale)}
+                    </span>
+                  </div>
+                  <p className="muted small">{t("settings.autoClaim.description", undefined, locale)}</p>
+                  {!gameState.automation.autoClaimContracts ? (
+                    <div className="muted small warning">{t("settings.requiresClerk", undefined, locale)}</div>
+                  ) : null}
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoClaimContracts}
+                      onChange={(event) => handleUpdateSettings({ autoClaimContracts: event.target.checked })}
+                      disabled={!gameState.automation.autoClaimContracts}
+                    />{" "}
+                    {t("settings.autoClaim.toggle", undefined, locale)}
+                  </label>
+                </div>
+              </div>
+
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoAccept.label", undefined, locale)}</strong>
+                    <span
+                      className={`status-pill ${
+                        gameState.automation.autoAcceptContracts ? "status-active" : "status-idle"
+                      }`}
+                    >
+                      {gameState.automation.autoAcceptContracts
+                        ? t("settings.status.available", undefined, locale)
+                        : t("settings.status.locked", undefined, locale)}
+                    </span>
+                  </div>
+                  <p className="muted small">{t("settings.autoAccept.description", undefined, locale)}</p>
+                  {!gameState.automation.autoAcceptContracts ? (
+                    <div className="muted small warning">{t("settings.requiresClerk", undefined, locale)}</div>
+                  ) : null}
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small" style={{ display: "block" }}>
+                    {t("settings.autoAccept.modeLabel", undefined, locale)}
+                    <select
+                      style={{ marginLeft: "4px" }}
+                      value={settings.autoAcceptMode}
+                      onChange={(event) =>
+                        handleUpdateSettings({
+                          autoAcceptMode: event.target.value as GameState["settings"]["autoAcceptMode"]
+                        })
+                      }
+                      disabled={!gameState.automation.autoAcceptContracts}
+                    >
+                      {(["recommended", "highestScore", "manual"] as const).map((mode) => (
+                        <option key={mode} value={mode}>
+                          {autoAcceptModeLabels[mode]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoForging.label", undefined, locale)}</strong>
+                    <span className="status-pill status-active">{t("settings.status.available", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">{t("settings.autoForging.description", undefined, locale)}</p>
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoForging}
+                      onChange={(event) => handleUpdateSettings({ autoForging: event.target.checked })}
+                    />{" "}
+                    {t("settings.autoForging.toggle", undefined, locale)}
+                  </label>
+                </div>
+              </div>
+
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoAlchemy.label", undefined, locale)}</strong>
+                    <span className="status-pill status-idle">{t("settings.status.preview", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">{t("settings.autoAlchemy.description", undefined, locale)}</p>
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small">
+                    <input type="checkbox" checked={settings.autoAlchemy} disabled />{" "}
+                    {t("settings.autoAlchemy.toggle", undefined, locale)}
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       ) : null}

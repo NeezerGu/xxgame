@@ -10,7 +10,8 @@ import { createEmptyEquipmentInventory, createEmptyEquipped, ensureEquipmentDefa
 import { createEmptyForgingQueue } from "./forging";
 import { createInitialAutomationState, createInitialDisciplesState, syncAutomation } from "./disciples";
 import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
-export const SCHEMA_VERSION = 10;
+import { createDefaultSettings, mergeSettings } from "./settings";
+export const SCHEMA_VERSION = 11;
 function normalizeResources(resources) {
     return createEmptyResources(resources ?? {});
 }
@@ -19,6 +20,7 @@ function isLegacySerializedSaveV1(save) {
 }
 export function createInitialState(nowMs) {
     const seed = Math.max(1, Math.floor(nowMs % 1000000));
+    const defaultSettings = createDefaultSettings();
     const starterEquipment = {
         instanceId: "1",
         blueprintId: "ember-shiv",
@@ -53,6 +55,7 @@ export function createInitialState(nowMs) {
         disciples: createInitialDisciplesState(),
         automation: createInitialAutomationState(),
         expeditions: createInitialExpeditionState(getInitialRealmId()),
+        settings: defaultSettings,
         equipped: createEmptyEquipped(),
         forgingQueue: createEmptyForgingQueue()
     };
@@ -111,6 +114,17 @@ export function migrateToLatest(save) {
         };
     }
     if (save.schemaVersion === 9) {
+        const migratedState = {
+            ...save.state,
+            schemaVersion: SCHEMA_VERSION
+        };
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            savedAtMs: save.savedAtMs ?? Date.now(),
+            state: applyStateDefaults(migratedState)
+        };
+    }
+    if (save.schemaVersion === 10) {
         const migratedState = {
             ...save.state,
             schemaVersion: SCHEMA_VERSION
@@ -190,7 +204,8 @@ export function migrateToLatest(save) {
             forgingQueue: createEmptyForgingQueue(),
             expeditions: createInitialExpeditionState(getInitialRealmId()),
             disciples: createInitialDisciplesState(),
-            automation: createInitialAutomationState()
+            automation: createInitialAutomationState(),
+            settings: createDefaultSettings()
         };
         return {
             schemaVersion: SCHEMA_VERSION,
@@ -217,6 +232,7 @@ function applyStateDefaults(state) {
     const disciples = withStarterEquipment.disciples ?? createInitialDisciplesState();
     const automation = withStarterEquipment.automation ?? createInitialAutomationState();
     const expeditions = withStarterEquipment.expeditions ?? createInitialExpeditionState(realm.current);
+    const settings = mergeSettings(withStarterEquipment.settings, {});
     const withResources = {
         ...withStarterEquipment,
         schemaVersion: SCHEMA_VERSION,
@@ -247,6 +263,7 @@ function applyStateDefaults(state) {
         disciples,
         automation,
         expeditions,
+        settings,
         forgingQueue
     };
     const desiredSlots = BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
