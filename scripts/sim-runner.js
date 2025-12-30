@@ -113,7 +113,8 @@ function snapshotState(state, totals, elapsedMs) {
     reputation: state.resources.reputation,
     researchPoints: state.resources.research,
     contractsActive: state.contracts.slots.filter((slot) => slot.status === "active").length,
-    contractsCompletedTotal: totals.contractsCompleted
+    contractsCompletedTotal: totals.contractsCompleted,
+    disciples: state.disciples?.roster.length ?? 0
   };
 }
 
@@ -128,6 +129,10 @@ export async function runSim(userConfig = {}) {
   const { RESEARCH_DEFINITIONS } = await import("../dist/engine/data/research.js");
   const { UPGRADE_DEFINITIONS } = await import("../dist/engine/data/upgrades.js");
   const { CONTRACT_DEFINITIONS } = await import("../dist/engine/data/contracts.js");
+  const { EQUIPMENT_BLUEPRINTS, findEquipmentBlueprint } = await import("../dist/engine/data/equipment.js");
+  const { getEquipmentModifiers } = await import("../dist/engine/equipment.js");
+  const { DISCIPLE_RECRUIT_COST, DISCIPLE_ARCHETYPES } = await import("../dist/engine/data/disciples.js");
+  const { EXPEDITION_DEFINITIONS } = await import("../dist/engine/data/expeditions.js");
 
   let state = createInitialState(config.seed);
   const totals = {
@@ -136,7 +141,8 @@ export async function runSim(userConfig = {}) {
     contractsAccepted: 0,
     contractsCompleted: 0,
     upgradesPurchased: 0,
-    researchPurchasedCount: 0
+    researchPurchasedCount: 0,
+    disciplesRecruited: 0
   };
 
   let elapsedMs = 0;
@@ -203,6 +209,140 @@ export async function runSim(userConfig = {}) {
     }
   }
 
+  function startForgingIfPossible() {
+    if (state.forgingQueue?.active) return;
+    const affordable = EQUIPMENT_BLUEPRINTS.filter(
+      (bp) => state.resources.ore >= bp.cost.ore && state.resources.essence >= bp.cost.essence
+    );
+    if (affordable.length === 0) return;
+    const sorted = affordable
+      .slice()
+      .sort((a, b) => {
+        if (b.basePower !== a.basePower) return b.basePower - a.basePower;
+        return a.id.localeCompare(b.id);
+      });
+    const chosen = sorted[0];
+    const next = applyAction(state, { type: "startForge", blueprintId: chosen.id });
+    if (next !== state) {
+      state = next;
+    }
+  }
+
+  function equipmentScoreForInstance(instanceId) {
+    const item = state.equipmentInventory.items[instanceId];
+    if (!item) return -Infinity;
+    const currentModifiers = getEquipmentModifiers(state);
+    const hypothetical = {
+      ...state,
+      equipped: { ...state.equipped, [item.slot]: instanceId }
+    };
+    const nextModifiers = getEquipmentModifiers(hypothetical);
+    const productionGain = nextModifiers.productionMult - currentModifiers.productionMult;
+    const contractGain = nextModifiers.contractSpeedMult - currentModifiers.contractSpeedMult;
+    return productionGain * 10 + contractGain;
+  }
+
+  function equipBestAvailable() {
+    const items = Object.values(state.equipmentInventory.items ?? {});
+    const bySlot = {};
+    for (const item of items) {
+      bySlot[item.slot] = bySlot[item.slot] ?? [];
+      bySlot[item.slot].push(item);
+    }
+    Object.entries(bySlot).forEach(([slot, slotItems]) => {
+      slotItems.sort((a, b) => {
+        const scoreDiff = equipmentScoreForInstance(b.instanceId) - equipmentScoreForInstance(a.instanceId);
+        if (Math.abs(scoreDiff) > 1e-9) return scoreDiff;
+        const bpA = findEquipmentBlueprint(a.blueprintId);
+        const bpB = findEquipmentBlueprint(b.blueprintId);
+        const baseDiff = bpB.basePower - bpA.basePower;
+        if (Math.abs(baseDiff) > 1e-9) return baseDiff;
+        return a.instanceId.localeCompare(b.instanceId);
+      });
+      const best = slotItems[0];
+      if (best && state.equipped[slot] !== best.instanceId) {
+        state = applyAction(state, { type: "equip", instanceId: best.instanceId });
+      }
+    });
+  }
+
+  function expeditionRewardValue(entry) {
+    if (entry.type === "resource") return entry.amount;
+    if (entry.type === "recipe") return 180;
+    if (entry.type === "equipment") return 160;
+    return 0;
+  }
+
+  function expeditionScore(def) {
+    const totalWeight = def.rewardTable.reduce((sum, item) => sum + item.weight, 0);
+    const expectedValue =
+      def.rewardRolls *
+      def.rewardTable.reduce((sum, item) => sum + (item.weight / totalWeight) * expeditionRewardValue(item), 0);
+    return expectedValue / (def.durationMs / 1000);
+  }
+
+  function bestDiscipleForExpedition() {
+    const roster = state.disciples?.roster ?? [];
+    const preferredOrder = ["gatherer", "smith", "contractClerk", "alchemist"];
+    for (const role of preferredOrder) {
+      const found = roster.find((d) => d.role === role);
+      if (found) return found.id;
+    }
+    return null;
+  }
+
+  function startExpeditionIfIdle() {
+    if (state.expeditions?.active) return;
+    const available = EXPEDITION_DEFINITIONS.filter((def) => state.expeditions?.unlockedExpeditions?.[def.id]);
+    if (available.length === 0) return;
+    const sorted = available
+      .slice()
+      .sort((a, b) => {
+        const diff = expeditionScore(b) - expeditionScore(a);
+        if (Math.abs(diff) > 1e-9) return diff;
+        return a.id.localeCompare(b.id);
+      });
+    const chosen = sorted[0];
+    const discipleId = bestDiscipleForExpedition();
+    const next = applyAction(state, { type: "startExpedition", expeditionId: chosen.id, discipleId });
+    if (next !== state) {
+      state = next;
+    }
+  }
+
+  function canRecruitDisciple() {
+    return (
+      state.resources.essence >= DISCIPLE_RECRUIT_COST.essence &&
+      state.resources.reputation >= (DISCIPLE_RECRUIT_COST.reputation ?? 0)
+    );
+  }
+
+  function assignDiscipleRoles() {
+    const desiredRoles = ["contractClerk", "gatherer", "smith", "alchemist"];
+    const roster = state.disciples?.roster ?? [];
+    desiredRoles.forEach((role) => {
+      const hasRole = roster.some((disciple) => disciple.role === role);
+      if (hasRole) return;
+      const candidate = roster.find((disciple) => {
+        const archetype = DISCIPLE_ARCHETYPES.find((a) => a.id === disciple.archetypeId);
+        return archetype?.rolesAllowed.includes(role);
+      });
+      if (candidate) {
+        state = applyAction(state, { type: "assignDiscipleRole", discipleId: candidate.id, role });
+      }
+    });
+  }
+
+  function recruitDisciplesIfPossible() {
+    while (canRecruitDisciple()) {
+      const next = applyAction(state, { type: "recruitDisciple" });
+      if (next === state) break;
+      totals.disciplesRecruited += 1;
+      state = next;
+      assignDiscipleRoles();
+    }
+  }
+
   function fillContracts() {
     while (true) {
       const active = state.contracts.slots.filter((slot) => slot.status === "active").length;
@@ -244,11 +384,15 @@ export async function runSim(userConfig = {}) {
 
   while (elapsedMs < config.seconds * 1000) {
     completeContracts();
+    recruitDisciplesIfPossible();
     buyResearchIfPossible();
     attemptBreakthrough();
     tryAscend();
     buyUpgrades();
     fillContracts();
+    startForgingIfPossible();
+    startExpeditionIfIdle();
+    equipBestAvailable();
 
     state = tick(state, config.tickMs);
     elapsedMs += config.tickMs;
@@ -276,7 +420,8 @@ export async function runSim(userConfig = {}) {
       contractsAccepted: totals.contractsAccepted,
       contractsCompleted: totals.contractsCompleted,
       upgradesPurchased: totals.upgradesPurchased,
-      researchPurchasedCount: totals.researchPurchasedCount
+      researchPurchasedCount: totals.researchPurchasedCount,
+      disciplesRecruited: totals.disciplesRecruited
     },
     final: {
       resources: state.resources,
@@ -285,7 +430,10 @@ export async function runSim(userConfig = {}) {
       researchPoints: state.resources.research,
       insight: state.resources.insight,
       essence: state.resources.essence,
-      runStats: state.runStats
+      runStats: state.runStats,
+      disciples: state.disciples,
+      automation: state.automation,
+      settings: state.settings
     },
     purchasedResearch,
     upgradesLevels: state.upgrades

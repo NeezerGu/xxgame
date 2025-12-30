@@ -1,6 +1,7 @@
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { ensureContractSlotCount } from "./contracts";
 import { findResearchDefinition, RESEARCH_DEFINITIONS } from "./data/research";
+import { getResource } from "./resources";
 export function initializeResearchState() {
     const nodes = RESEARCH_DEFINITIONS.reduce((acc, def) => {
         acc[def.id] = { purchased: false };
@@ -23,10 +24,13 @@ export function canBuyResearch(state, id) {
     if (node?.purchased) {
         return false;
     }
+    if (!state.realm.unlockedResearchIds.includes(id)) {
+        return false;
+    }
     if ((def.prerequisites ?? []).some((pre) => !nodes[pre]?.purchased)) {
         return false;
     }
-    return state.resources.research >= def.costResearch;
+    return getResource(state.resources, "research") >= def.costResearch;
 }
 export function applyResearchPurchase(state, id) {
     if (!canBuyResearch(state, id)) {
@@ -45,7 +49,7 @@ export function applyResearchPurchase(state, id) {
         research: updatedResearch,
         resources: {
             ...state.resources,
-            research: state.resources.research - def.costResearch
+            research: getResource(state.resources, "research") - def.costResearch
         }
     };
     const modifiers = getResearchModifiers(updatedState);

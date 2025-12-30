@@ -57,6 +57,15 @@ async function main() {
   const { UPGRADE_DEFINITIONS, getUpgradeCost } = await loadModule("data/upgrades.js");
   const { RESEARCH_DEFINITIONS } = await loadModule("data/research.js");
   const { CONTRACT_DEFINITIONS } = await loadModule("data/contracts.js");
+  const {
+    EQUIPMENT_BLUEPRINTS,
+    AFFIX_DEFINITIONS,
+    FORGING_RARITY_WEIGHTS,
+    FORGING_AFFIX_COUNT,
+    DISASSEMBLE_REFUND_MULTIPLIER
+  } = await loadModule("data/equipment.js");
+  const { EXPEDITION_DEFINITIONS } = await loadModule("data/expeditions.js");
+  const { DISCIPLE_ARCHETYPES, DISCIPLE_RECRUIT_COST, DISCIPLE_ROLE_EFFECTS } = await loadModule("data/disciples.js");
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
   const { RESOURCE_IDS } = await loadModule("resources.js");
@@ -75,7 +84,18 @@ async function main() {
     },
     upgrades: UPGRADE_DEFINITIONS,
     research: RESEARCH_DEFINITIONS,
-    contracts: CONTRACT_DEFINITIONS
+    contracts: CONTRACT_DEFINITIONS,
+    equipmentBlueprints: EQUIPMENT_BLUEPRINTS,
+    equipmentAffixes: AFFIX_DEFINITIONS,
+    forgingRarityWeights: FORGING_RARITY_WEIGHTS,
+    forgingAffixCount: FORGING_AFFIX_COUNT,
+    disassembleRefundMultiplier: DISASSEMBLE_REFUND_MULTIPLIER,
+    expeditions: EXPEDITION_DEFINITIONS,
+    disciples: {
+      archetypes: DISCIPLE_ARCHETYPES,
+      recruitCost: DISCIPLE_RECRUIT_COST,
+      roleEffects: DISCIPLE_ROLE_EFFECTS
+    }
   };
 
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -98,12 +118,60 @@ async function main() {
     formatResearchEffect(r.effect),
     (r.prerequisites ?? []).join(", ") || "-"
   ]);
+  const equipmentBlueprintRows = EQUIPMENT_BLUEPRINTS.map((b) => [
+    b.id,
+    b.slot,
+    b.basePower,
+    b.forgeTimeMs,
+    b.cost.essence,
+    b.cost.ore,
+    b.nameKey,
+    b.descriptionKey
+  ]);
+  const equipmentAffixRows = AFFIX_DEFINITIONS.map((a) => [
+    a.id,
+    a.nameKey,
+    a.type,
+    a.min,
+    a.max
+  ]);
+  const rarityRows = Object.entries(FORGING_RARITY_WEIGHTS).map(([rarity, weight]) => [rarity, weight]);
+  const affixCountRows = Object.entries(FORGING_AFFIX_COUNT).map(([rarity, count]) => [rarity, count]);
+  const disassembleRows = Object.entries(DISASSEMBLE_REFUND_MULTIPLIER).map(([rarity, multiplier]) => [
+    rarity,
+    multiplier
+  ]);
   const contractRows = CONTRACT_DEFINITIONS.map((c) => [
     c.id,
     c.durationMs / 1000,
     ...RESOURCE_IDS.map((id) => c.reward[id] ?? 0),
     c.requiredEssencePerSecond ?? 0,
     c.requiredReputation ?? 0
+  ]);
+  const expeditionRows = EXPEDITION_DEFINITIONS.map((e) => [
+    e.id,
+    e.durationMs / 1000,
+    e.rewardRolls,
+    e.staminaCost ?? "-",
+    e.requiredRealm ?? "-",
+    e.nameKey,
+    e.descKey
+  ]);
+  const discipleRows = DISCIPLE_ARCHETYPES.map((d) => [
+    d.id,
+    d.baseAptitude,
+    d.rolesAllowed.join(", "),
+    d.nameKey,
+    d.descriptionKey
+  ]);
+  const discipleEffectRows = Object.entries(DISCIPLE_ROLE_EFFECTS).map(([role, effect]) => [
+    role,
+    effect.autoClaim ? "yes" : "-",
+    effect.autoAccept ? "yes" : "-",
+    effect.forgingSpeedPerAptitude ?? 0,
+    effect.alchemySpeedPerAptitude ?? 0,
+    effect.herbPerSecondPerAptitude ?? 0,
+    effect.orePerSecondPerAptitude ?? 0
   ]);
   const constantsRows = Object.entries(balanceJson.constants).map(([key, value]) => [key, value]);
 
@@ -122,6 +190,28 @@ async function main() {
       ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],
       contractRows
     ),
+    "## 历练/秘境",
+    renderTable(["ID", "Duration(s)", "Rolls", "Stamina", "Required Realm", "Name Key", "Desc Key"], expeditionRows),
+    "## 弟子原型",
+    renderTable(["ID", "Base Aptitude", "Allowed Roles", "Name Key", "Description Key"], discipleRows),
+    "## 弟子岗位效果",
+    renderTable(
+      ["Role", "Auto Claim", "Auto Accept", "Forge Speed/apt", "Alchemy Speed/apt", "Herb/s/apt", "Ore/s/apt"],
+      discipleEffectRows
+    ),
+    "## 装备蓝图",
+    renderTable(
+      ["ID", "Slot", "Base Power", "Forge Time(ms)", "Cost Essence", "Cost Ore", "Name Key", "Description Key"],
+      equipmentBlueprintRows
+    ),
+    "## 装备词缀",
+    renderTable(["ID", "Name Key", "Type", "Min", "Max"], equipmentAffixRows),
+    "## 稀有度权重",
+    renderTable(["Rarity", "Weight"], rarityRows),
+    "## 词缀条目数",
+    renderTable(["Rarity", "Affix Count"], affixCountRows),
+    "## 分解返还倍率（基于蓝图 Ore 成本）",
+    renderTable(["Rarity", "Refund Multiplier"], disassembleRows),
     "## 关键常量",
     renderTable(["Key", "Value"], constantsRows)
   ];

@@ -4,13 +4,29 @@ import { ASCEND_THRESHOLD, calculateInsightGain, canAscend } from "@engine/progr
 import { deserialize, serialize, createInitialState } from "@engine/save";
 import { applyAction, tick, FOCUS_COOLDOWN_MS } from "@engine/sim";
 import { getContractProgress } from "@engine/contracts";
-import type { GameState, ResourceId } from "@engine/types";
+import type { EquipmentSlot, GameState, ResourceId } from "@engine/types";
+import { mergeSettings } from "@engine/settings";
 import { UPGRADE_DEFINITIONS, getUpgradeCost } from "@engine/data/upgrades";
 import { RESEARCH_DEFINITIONS } from "@engine/data/research";
 import { CONTRACT_DEFINITIONS } from "@engine/data/contracts";
 import { canBuyResearch } from "@engine/research";
 import { canBreakthrough, getCurrentRealm, getNextRealm } from "@engine/progressionRealm";
 import { getResource } from "@engine/resources";
+import { getEquipmentModifiers, getRarityMultiplier } from "@engine/equipment";
+import {
+  AFFIX_DEFINITIONS,
+  EQUIPMENT_BLUEPRINTS,
+  findAffixDefinition,
+  findEquipmentBlueprint
+} from "@engine/data/equipment";
+import {
+  DISCIPLE_RECRUIT_COST,
+  DISCIPLE_ROLE_EFFECTS,
+  findDiscipleArchetype,
+  type DiscipleRole
+} from "@engine/data/disciples";
+import { getDiscipleModifiers } from "@engine/disciples";
+import { EXPEDITION_DEFINITIONS, findExpeditionDefinition, type ExpeditionId } from "@engine/data/expeditions";
 import { getDefaultLocale, persistLocale, t, type Locale, type MessageKey } from "./i18n";
 import { copyText } from "./utils/clipboard";
 import { APP_VERSION, buildDiagnosticsPayload } from "./utils/diagnostics";
@@ -23,12 +39,38 @@ import {
   SAVE_KEY,
   TAB_STORAGE_KEY
 } from "./constants/storage";
+import { OFFLINE_CAP_MS } from "@engine/data/constants";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const TICK_INTERVAL_MS = 250;
-const ALL_TABS: TabKey[] = ["realm", "contracts", "upgrades", "research", "ascend", "dev", "help"];
+const ALL_TABS: TabKey[] = [
+  "realm",
+  "contracts",
+  "upgrades",
+  "research",
+  "equipment",
+  "forging",
+  "expeditions",
+  "disciples",
+  "ascend",
+  "settings",
+  "dev",
+  "help"
+];
 
-type TabKey = "realm" | "contracts" | "upgrades" | "research" | "ascend" | "dev" | "help";
+type TabKey =
+  | "realm"
+  | "contracts"
+  | "upgrades"
+  | "research"
+  | "equipment"
+  | "forging"
+  | "expeditions"
+  | "disciples"
+  | "ascend"
+  | "settings"
+  | "dev"
+  | "help";
 type ContractSortMode = "default" | "score";
 const REWARD_DISPLAY_ORDER = ["research", "reputation", "essence", "herb", "ore", "insight"] as const;
 
@@ -83,6 +125,7 @@ function App() {
     const saved = safeReadStorage(CONTRACT_HIDE_STORAGE_KEY);
     return saved === "true";
   });
+  const [selectedExpeditionDisciple, setSelectedExpeditionDisciple] = useState<Record<string, string | null>>({});
 
   if (shouldCrash) {
     throw new Error("Manual crash trigger");
@@ -98,7 +141,12 @@ function App() {
         { key: "contracts", label: t("tab.contracts", undefined, locale) },
         { key: "upgrades", label: t("tab.upgrades", undefined, locale) },
         { key: "research", label: t("tab.research", undefined, locale) },
+        { key: "equipment", label: t("tab.equipment", undefined, locale) },
+        { key: "forging", label: t("tab.forging", undefined, locale) },
+        { key: "expeditions", label: t("tab.expeditions", undefined, locale) },
+        { key: "disciples", label: t("tab.disciples", undefined, locale) },
         { key: "ascend", label: t("tab.ascend", undefined, locale) },
+        { key: "settings", label: t("tab.settings", undefined, locale) },
         { key: "dev", label: t("tab.dev", undefined, locale) },
         { key: "help", label: t("tab.help", undefined, locale) }
       ] as const,
@@ -222,8 +270,40 @@ function App() {
     setGameState((prev) => applyAction(prev, { type: "buyResearch", researchId }));
   };
 
+  const handleEquip = (instanceId: string) => {
+    setGameState((prev) => applyAction(prev, { type: "equip", instanceId }));
+  };
+
+  const handleUnequip = (slot: EquipmentSlot) => {
+    setGameState((prev) => applyAction(prev, { type: "unequip", slot }));
+  };
+
   const handleFastForward = (ms: number) => {
     setGameState((prev) => tick(prev, ms));
+  };
+
+  const handleStartForge = (blueprintId: (typeof EQUIPMENT_BLUEPRINTS)[number]["id"]) => {
+    setGameState((prev) => applyAction(prev, { type: "startForge", blueprintId }));
+  };
+
+  const handleDisassemble = (instanceId: string) => {
+    setGameState((prev) => applyAction(prev, { type: "disassemble", instanceId }));
+  };
+
+  const handleRecruitDisciple = () => {
+    setGameState((prev) => applyAction(prev, { type: "recruitDisciple" }));
+  };
+
+  const handleAssignDiscipleRole = (discipleId: string, role: DiscipleRole | null) => {
+    setGameState((prev) => applyAction(prev, { type: "assignDiscipleRole", discipleId, role }));
+  };
+
+  const handleStartExpedition = (expeditionId: ExpeditionId, discipleId: string | null) => {
+    setGameState((prev) => applyAction(prev, { type: "startExpedition", expeditionId, discipleId }));
+  };
+
+  const handleUpdateSettings = (settings: Partial<GameState["settings"]>) => {
+    setGameState((prev) => applyAction(prev, { type: "updateSettings", settings }));
   };
 
   const handleImport = () => {
@@ -301,6 +381,7 @@ function App() {
   const insightValue = getResource(gameState.resources, "insight");
   const herbValue = getResource(gameState.resources, "herb");
   const oreValue = getResource(gameState.resources, "ore");
+  const settings = useMemo(() => mergeSettings(gameState.settings, {}), [gameState.settings]);
 
   const ascendProgress = Math.min(1, essence / ASCEND_THRESHOLD);
   const ascendReady = canAscend(gameState);
@@ -432,6 +513,164 @@ function App() {
       herb: t("stats.herb", undefined, locale),
       ore: t("stats.ore", undefined, locale)
     }),
+    [locale]
+  );
+  const slotLabels = useMemo<Record<EquipmentSlot, string>>(
+    () => ({
+      weapon: t("equipment.slot.weapon", undefined, locale),
+      armor: t("equipment.slot.armor", undefined, locale),
+      ring: t("equipment.slot.ring", undefined, locale),
+      amulet: t("equipment.slot.amulet", undefined, locale)
+    }),
+    [locale]
+  );
+  const rarityLabels = useMemo(
+    () => ({
+      common: t("equipment.rarity.common", undefined, locale),
+      uncommon: t("equipment.rarity.uncommon", undefined, locale),
+      rare: t("equipment.rarity.rare", undefined, locale),
+      epic: t("equipment.rarity.epic", undefined, locale)
+    }),
+    [locale]
+  );
+  const autoAcceptModeLabels = useMemo(
+    () => ({
+      recommended: t("settings.autoAccept.mode.recommended", undefined, locale),
+      highestScore: t("settings.autoAccept.mode.highestScore", undefined, locale),
+      manual: t("settings.autoAccept.mode.manual", undefined, locale)
+    }),
+    [locale]
+  );
+  const expeditionDefinitions = useMemo(() => EXPEDITION_DEFINITIONS.slice(), []);
+  const discipleModifiers = useMemo(() => getDiscipleModifiers(gameState), [gameState]);
+  const discipleRoleLabels = useMemo<Record<DiscipleRole, string>>(
+    () => ({
+      contractClerk: t("disciples.role.contractClerk", undefined, locale),
+      alchemist: t("disciples.role.alchemist", undefined, locale),
+      smith: t("disciples.role.smith", undefined, locale),
+      gatherer: t("disciples.role.gatherer", undefined, locale)
+    }),
+    [locale]
+  );
+  const canRecruitDisciple = useMemo(
+    () =>
+      getResource(gameState.resources, "essence") >= DISCIPLE_RECRUIT_COST.essence &&
+      getResource(gameState.resources, "reputation") >= DISCIPLE_RECRUIT_COST.reputation,
+    [gameState.resources]
+  );
+  const forgingBlueprints = useMemo(() => EQUIPMENT_BLUEPRINTS.slice(), []);
+  const equipmentModifiers = useMemo(() => getEquipmentModifiers(gameState), [gameState]);
+  const forgingQueue = gameState.forgingQueue;
+  const activeForge = forgingQueue.active;
+  const activeForgeBlueprint = activeForge ? findEquipmentBlueprint(activeForge.blueprintId) : null;
+  const forgingProgress = activeForge && activeForge.totalMs > 0 ? Math.min(1, 1 - activeForge.remainingMs / activeForge.totalMs) : 0;
+  const lastForgedItem = forgingQueue.lastFinished;
+  const activeExpedition = gameState.expeditions.active;
+  const equippedEntries = useMemo(
+    () => {
+      const equipped = gameState.equipped;
+      const items = gameState.equipmentInventory.items;
+      return (Object.keys(equipped) as EquipmentSlot[]).map((slot) => {
+        const instanceId = equipped[slot];
+        const item = instanceId ? items[instanceId] : null;
+        return { slot, instanceId, item };
+      });
+    },
+    [gameState.equipped, gameState.equipmentInventory.items]
+  );
+  const inventoryItems = useMemo(
+    () =>
+      Object.values(gameState.equipmentInventory.items).sort(
+        (a, b) => Number(a.instanceId) - Number(b.instanceId)
+      ),
+    [gameState.equipmentInventory.items]
+  );
+  const equippedInstanceIds = useMemo(
+    () => new Set(Object.values(gameState.equipped).filter(Boolean) as string[]),
+    [gameState.equipped]
+  );
+  const effectiveOfflineCapMs = useMemo(
+    () => OFFLINE_CAP_MS + equipmentModifiers.offlineCapBonusMs,
+    [equipmentModifiers.offlineCapBonusMs]
+  );
+  const formatAffixEffect = useCallback(
+    (affixId: (typeof AFFIX_DEFINITIONS)[number]["id"], value: number, rarity: string) => {
+      const def = findAffixDefinition(affixId);
+      const effectiveValue = value * getRarityMultiplier(rarity);
+      switch (def.type) {
+        case "productionMult":
+          return t("equipment.affixEffect.productionMult", { value: (effectiveValue * 100).toFixed(1) }, locale);
+        case "contractSpeedMult":
+          return t("equipment.affixEffect.contractSpeedMult", { value: (effectiveValue * 100).toFixed(1) }, locale);
+        case "offlineCapBonus":
+          return t("equipment.affixEffect.offlineCapBonus", { minutes: Math.round(effectiveValue / 60000) }, locale);
+        default:
+          return "";
+      }
+    },
+    [locale]
+  );
+  const formatBasePowerLine = useCallback(
+    (basePower: number) => t("equipment.basePowerLine", { value: (basePower * 100).toFixed(1) }, locale),
+    [locale]
+  );
+  const formatDiscipleRoleEffect = useCallback(
+    (role: DiscipleRole | null, aptitude: number) => {
+      if (!role) {
+        return t("disciples.effect.unassigned", undefined, locale);
+      }
+      const effect = DISCIPLE_ROLE_EFFECTS[role];
+      if (!effect) return "";
+      switch (role) {
+        case "contractClerk":
+          return t("disciples.effect.contractClerk", undefined, locale);
+        case "smith": {
+          const smithSpeed = (effect.forgingSpeedPerAptitude ?? 0) * aptitude;
+          return t(
+            "disciples.effect.smith",
+            { value: (smithSpeed * 100).toFixed(1) },
+            locale
+          );
+        }
+        case "alchemist": {
+          const alchemySpeed = (effect.alchemySpeedPerAptitude ?? 0) * aptitude;
+          return t(
+            "disciples.effect.alchemist",
+            { value: (alchemySpeed * 100).toFixed(1) },
+            locale
+          );
+        }
+        case "gatherer": {
+          const herbRate = (effect.herbPerSecondPerAptitude ?? 0) * aptitude;
+          const oreRate = (effect.orePerSecondPerAptitude ?? 0) * aptitude;
+          return t(
+            "disciples.effect.gatherer",
+            {
+              herb: formatCompact(herbRate, { maxDecimals: 2 }),
+              ore: formatCompact(oreRate, { maxDecimals: 2 })
+            },
+            locale
+          );
+        }
+        default:
+          return "";
+      }
+    },
+    [locale]
+  );
+  const formatExpeditionReward = useCallback(
+    (reward: { type: "resource"; resourceId: ResourceId; amount: number } | { type: "recipe"; recipeId: string } | { type: "equipment"; blueprintId: string }) => {
+      switch (reward.type) {
+        case "resource":
+          return `${t(`stats.${reward.resourceId}` as MessageKey, undefined, locale)} +${formatCompact(reward.amount, { maxDecimals: 1 })}`;
+        case "recipe":
+          return t("expeditions.reward.recipe", { id: reward.recipeId }, locale);
+        case "equipment":
+          return t("expeditions.reward.equipment", { id: reward.blueprintId }, locale);
+        default:
+          return "";
+      }
+    },
     [locale]
   );
   const glossaryEntries = useMemo(
@@ -996,6 +1235,506 @@ function App() {
         </section>
       ) : null}
 
+      {activeTab === "equipment" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("equipment.title", undefined, locale)}</h2>
+              <p className="muted small">{t("equipment.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t(
+                "equipment.summaryLine",
+                {
+                  production: equipmentModifiers.productionMult.toFixed(2),
+                  contract: equipmentModifiers.contractSpeedMult.toFixed(2),
+                  offline: formatSeconds(effectiveOfflineCapMs / 1000)
+                },
+                locale
+              )}
+            </div>
+          </div>
+          <div className="reputation-summary">
+            <div>
+              {t(
+                "equipment.productionSummary",
+                {
+                  value: ((equipmentModifiers.productionMult - 1) * 100).toFixed(1)
+                },
+                locale
+              )}
+            </div>
+            <div>
+              {t(
+                "equipment.contractSummary",
+                {
+                  value: ((equipmentModifiers.contractSpeedMult - 1) * 100).toFixed(1)
+                },
+                locale
+              )}
+            </div>
+            <div>
+              {t(
+                "equipment.offlineSummary",
+                {
+                  base: formatSeconds(OFFLINE_CAP_MS / 1000),
+                  bonusMinutes: Math.round(equipmentModifiers.offlineCapBonusMs / 60000)
+                },
+                locale
+              )}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("equipment.equippedTitle", undefined, locale)}</h3>
+            <div className="upgrade-list">
+              {equippedEntries.map((entry) => {
+                const item = entry.item;
+                const blueprint = item ? findEquipmentBlueprint(item.blueprintId) : null;
+                return (
+                  <div className="upgrade-row" key={entry.slot}>
+                    <div>
+                      <strong>{slotLabels[entry.slot]}</strong>
+                      {item && blueprint ? (
+                        <>
+                          <p className="muted small">
+                            {t(blueprint.nameKey as MessageKey, undefined, locale)} • {rarityLabels[item.rarity]}
+                          </p>
+                          <p className="muted small">{t(blueprint.descriptionKey as MessageKey, undefined, locale)}</p>
+                          <p className="muted small">{formatBasePowerLine(blueprint.basePower)}</p>
+                          <ul className="muted small">
+                            {item.affixes.map((affix) => {
+                              const def = findAffixDefinition(affix.affixId);
+                              return (
+                                <li key={affix.affixId}>
+                                  {t(def.nameKey as MessageKey, undefined, locale)} —{" "}
+                                  {formatAffixEffect(affix.affixId, affix.value, item.rarity)}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </>
+                      ) : (
+                        <p className="muted small">{t("equipment.emptySlot", undefined, locale)}</p>
+                      )}
+                    </div>
+                    <div className="upgrade-actions">
+                      {item ? (
+                        <button className="action-button secondary" onClick={() => handleUnequip(entry.slot)}>
+                          {t("equipment.unequip", undefined, locale)}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("equipment.inventoryTitle", undefined, locale)}</h3>
+            {inventoryItems.length === 0 ? (
+              <p className="muted small">{t("equipment.emptyInventory", undefined, locale)}</p>
+            ) : (
+              <div className="upgrade-list">
+                {inventoryItems.map((item) => {
+                  const blueprint = findEquipmentBlueprint(item.blueprintId);
+                  const isEquipped = equippedInstanceIds.has(item.instanceId);
+                  return (
+                    <div className="upgrade-row" key={item.instanceId}>
+                      <div>
+                        <strong>
+                          {t(blueprint.nameKey as MessageKey, undefined, locale)} • {rarityLabels[item.rarity]}
+                        </strong>
+                        <p className="muted small">
+                          {slotLabels[item.slot]} • {t(blueprint.descriptionKey as MessageKey, undefined, locale)}
+                        </p>
+                        <p className="muted small">{formatBasePowerLine(blueprint.basePower)}</p>
+                        <ul className="muted small">
+                          {item.affixes.map((affix) => {
+                            const def = findAffixDefinition(affix.affixId);
+                            return (
+                              <li key={`${item.instanceId}-${affix.affixId}`}>
+                                {t(def.nameKey as MessageKey, undefined, locale)} —{" "}
+                                {formatAffixEffect(affix.affixId, affix.value, item.rarity)}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                      <div className="upgrade-actions">
+                        <button className="action-button" onClick={() => handleEquip(item.instanceId)} disabled={isEquipped}>
+                          {isEquipped ? t("equipment.isEquipped", undefined, locale) : t("equipment.equip", undefined, locale)}
+                        </button>
+                        <button className="action-button secondary" onClick={() => handleDisassemble(item.instanceId)}>
+                          {t("equipment.disassemble", undefined, locale)}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "forging" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("forging.title", undefined, locale)}</h2>
+              <p className="muted small">{t("forging.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t("forging.materials", { ore: formatInt(oreValue, locale), essence: formatInt(essence, locale) }, locale)}
+            </div>
+          </div>
+
+          <div className="help-section">
+            <h3>{t("forging.blueprints", undefined, locale)}</h3>
+            <div className="upgrade-list">
+              {forgingBlueprints.map((bp) => {
+                const affordable =
+                  oreValue >= bp.cost.ore && essence >= bp.cost.essence && !activeForge;
+                const disabledReason = activeForge
+                  ? t("forging.queueBusy", undefined, locale)
+                  : oreValue < bp.cost.ore
+                    ? t("forging.needOre", { ore: formatInt(bp.cost.ore, locale) }, locale)
+                    : essence < bp.cost.essence
+                      ? t("forging.needEssence", { essence: formatInt(bp.cost.essence, locale) }, locale)
+                      : null;
+                return (
+                  <div className="upgrade-row" key={bp.id}>
+                    <div>
+                      <strong>{t(bp.nameKey as MessageKey, undefined, locale)}</strong>
+                      <p className="muted small">{t(bp.descriptionKey as MessageKey, undefined, locale)}</p>
+                      <p className="muted small">
+                        {t("forging.costLine", { ore: formatInt(bp.cost.ore, locale), essence: formatInt(bp.cost.essence, locale) }, locale)}
+                      </p>
+                      <p className="muted small">
+                        {t("forging.timeLine", { seconds: formatSeconds(bp.forgeTimeMs / 1000) }, locale)}
+                      </p>
+                    </div>
+                    <div className="upgrade-actions">
+                      <button className="action-button" disabled={!affordable} onClick={() => handleStartForge(bp.id)} title={disabledReason ?? undefined}>
+                        {t("forging.start", undefined, locale)}
+                      </button>
+                      {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="help-section">
+            <h3>{t("forging.queueTitle", undefined, locale)}</h3>
+            {activeForge && activeForgeBlueprint ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t(activeForgeBlueprint.nameKey as MessageKey, undefined, locale)}</strong>
+                    <span className="status-pill status-active">{t("forging.inProgress", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">
+                    {t("forging.remaining", { seconds: formatSeconds(activeForge.remainingMs / 1000) }, locale)}
+                  </p>
+                  <div className="progress-bar contract-progress">
+                    <div className="progress-fill" style={{ width: `${forgingProgress * 100}%` }} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("forging.idle", undefined, locale)}</p>
+            )}
+          </div>
+
+          <div className="help-section">
+            <h3>{t("forging.lastFinished", undefined, locale)}</h3>
+            {lastForgedItem ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>
+                      {t(findEquipmentBlueprint(lastForgedItem.blueprintId).nameKey as MessageKey, undefined, locale)} •{" "}
+                      {rarityLabels[lastForgedItem.rarity]}
+                    </strong>
+                  </div>
+                  <ul className="muted small">
+                    {lastForgedItem.affixes.map((affix) => {
+                      const def = findAffixDefinition(affix.affixId);
+                      return (
+                        <li key={affix.affixId}>
+                          {t(def.nameKey as MessageKey, undefined, locale)} —{" "}
+                          {formatAffixEffect(affix.affixId, affix.value, lastForgedItem.rarity)}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("forging.none", undefined, locale)}</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "expeditions" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("expeditions.title", undefined, locale)}</h2>
+              <p className="muted small">{t("expeditions.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {activeExpedition ? t("expeditions.activeLabel", undefined, locale) : t("expeditions.idleLabel", undefined, locale)}
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("expeditions.available", undefined, locale)}</h3>
+            <div className="upgrade-list">
+              {expeditionDefinitions.map((def) => {
+                const unlocked = gameState.expeditions.unlockedExpeditions[def.id];
+                const realmAllowed = !def.requiredRealm || gameState.realm.current === def.requiredRealm || gameState.realm.unlockedTabs.includes("realm");
+                const disabledReason = activeExpedition
+                  ? t("expeditions.reason.active", undefined, locale)
+                  : !unlocked || !realmAllowed
+                    ? t("expeditions.reason.locked", undefined, locale)
+                    : null;
+                const progressLocked = Boolean(disabledReason);
+                const discipleSelection = selectedExpeditionDisciple[def.id] ?? "";
+                return (
+                  <div className="upgrade-row" key={def.id}>
+                    <div>
+                      <strong>{t(def.nameKey as MessageKey, undefined, locale)}</strong>
+                      <p className="muted small">{t(def.descKey as MessageKey, undefined, locale)}</p>
+                      <p className="muted small">
+                        {t("expeditions.duration", { seconds: formatSeconds(def.durationMs / 1000) }, locale)}
+                      </p>
+                    </div>
+                    <div className="upgrade-actions">
+                      <label className="muted small">
+                        {t("expeditions.assignFollower", undefined, locale)}
+                        <select
+                          value={discipleSelection}
+                          onChange={(event) =>
+                            setSelectedExpeditionDisciple((prev) => ({ ...prev, [def.id]: event.target.value || null }))
+                          }
+                          style={{ marginLeft: "4px" }}
+                        >
+                          <option value="">{t("expeditions.noFollower", undefined, locale)}</option>
+                          {gameState.disciples.roster.map((disciple) => (
+                            <option key={disciple.id} value={disciple.id}>
+                              {t(findDiscipleArchetype(disciple.archetypeId).nameKey as MessageKey, undefined, locale)} •{" "}
+                              {disciple.role ? discipleRoleLabels[disciple.role] : t("disciples.unassigned", undefined, locale)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="action-button"
+                        disabled={progressLocked}
+                        onClick={() => handleStartExpedition(def.id, discipleSelection || null)}
+                        title={disabledReason ?? undefined}
+                      >
+                        {t("expeditions.start", undefined, locale)}
+                      </button>
+                      {disabledReason ? <div className="muted small warning">{disabledReason}</div> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="help-section">
+            <h3>{t("expeditions.progressTitle", undefined, locale)}</h3>
+            {activeExpedition ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t(findExpeditionDefinition(activeExpedition.expeditionId).nameKey as MessageKey, undefined, locale)}</strong>
+                    <span className="status-pill status-active">{t("expeditions.inProgress", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">
+                    {t("expeditions.remaining", { seconds: formatSeconds(activeExpedition.remainingMs / 1000) }, locale)}
+                  </p>
+                  <div className="progress-bar contract-progress">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.min(1, 1 - activeExpedition.remainingMs / activeExpedition.totalMs) * 100}%` }}
+                    />
+                  </div>
+                  <div className="muted small">
+                    {t("expeditions.eventTimer", { seconds: formatSeconds(activeExpedition.nextEventMs / 1000) }, locale)}
+                  </div>
+                  <ul className="muted small">
+                    {activeExpedition.log.map((entry, index) => (
+                      <li key={`${entry}-${index}`}>{t(entry as MessageKey, undefined, locale)}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("expeditions.noActive", undefined, locale)}</p>
+            )}
+          </div>
+
+          <div className="help-section">
+            <h3>{t("expeditions.lastResult", undefined, locale)}</h3>
+            {gameState.expeditions.lastResult ? (
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>
+                      {t(
+                        findExpeditionDefinition(gameState.expeditions.lastResult.expeditionId).nameKey as MessageKey,
+                        undefined,
+                        locale
+                      )}
+                    </strong>
+                    <span className="status-pill status-completed">{t("contracts.status.completed", undefined, locale)}</span>
+                  </div>
+                  <ul className="muted small">
+                    {gameState.expeditions.lastResult.log.map((entry, index) => (
+                      <li key={`${entry}-${index}`}>{t(entry as MessageKey, undefined, locale)}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="contract-actions">
+                  {gameState.expeditions.lastResult.rewards.map((reward, index) => (
+                    <RewardBadge key={index} label={t("expeditions.rewardLabel", undefined, locale)} amount={formatExpeditionReward(reward)} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="muted small">{t("expeditions.noResult", undefined, locale)}</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "disciples" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("disciples.title", undefined, locale)}</h2>
+              <p className="muted small">{t("disciples.hint", undefined, locale)}</p>
+            </div>
+            <div className="muted small">
+              {t(
+                "disciples.recruitCost",
+                {
+                  essence: formatInt(DISCIPLE_RECRUIT_COST.essence, locale),
+                  reputation: formatInt(DISCIPLE_RECRUIT_COST.reputation, locale)
+                },
+                locale
+              )}
+            </div>
+          </div>
+
+          <div className="reputation-summary">
+            <div className="muted small">
+              {t(
+                "disciples.automation.claim",
+                {
+                  status: discipleModifiers.autoClaimContracts
+                    ? t("disciples.automation.enabled", undefined, locale)
+                    : t("disciples.automation.disabled", undefined, locale)
+                },
+                locale
+              )}
+            </div>
+            <div className="muted small">
+              {t(
+                "disciples.automation.accept",
+                {
+                  status: discipleModifiers.autoAcceptContracts
+                    ? t("disciples.automation.enabled", undefined, locale)
+                    : t("disciples.automation.disabled", undefined, locale)
+                },
+                locale
+              )}
+            </div>
+            <div className="muted small">
+              {t(
+                "disciples.gathering",
+                {
+                  herb: formatCompact(discipleModifiers.herbPerSecond, { maxDecimals: 2 }),
+                  ore: formatCompact(discipleModifiers.orePerSecond, { maxDecimals: 2 })
+                },
+                locale
+              )}
+            </div>
+          </div>
+
+          <div className="upgrade-actions" style={{ marginTop: "8px" }}>
+            <button className="action-button" onClick={handleRecruitDisciple} disabled={!canRecruitDisciple}>
+              {t("disciples.recruit", undefined, locale)}
+            </button>
+            {!canRecruitDisciple ? (
+              <div className="muted small warning">
+                {t("disciples.recruitBlocked", undefined, locale)}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="help-section">
+            <h3>{t("disciples.rosterTitle", undefined, locale)}</h3>
+            {gameState.disciples.roster.length === 0 ? (
+              <p className="muted small">{t("disciples.empty", undefined, locale)}</p>
+            ) : (
+              <div className="contract-list">
+                {gameState.disciples.roster.map((disciple) => {
+                  const archetype = findDiscipleArchetype(disciple.archetypeId);
+                  const allowedRolesLabel = archetype.rolesAllowed.map((role) => discipleRoleLabels[role]).join(" / ");
+                  return (
+                    <div className="contract-row" key={disciple.id}>
+                      <div className="contract-info">
+                        <div className="contract-title">
+                          <strong>{t(archetype.nameKey as MessageKey, undefined, locale)}</strong>
+                          <span className={`status-pill ${disciple.role ? "status-active" : "status-idle"}`}>
+                            {disciple.role ? discipleRoleLabels[disciple.role] : t("disciples.unassigned", undefined, locale)}
+                          </span>
+                        </div>
+                        <p className="muted">{t(archetype.descriptionKey as MessageKey, undefined, locale)}</p>
+                        <div className="muted small">
+                          {t("disciples.aptitude", { value: (disciple.aptitude * 100).toFixed(1) }, locale)}
+                        </div>
+                        <div className="muted small">
+                          {t("disciples.allowedRoles", { roles: allowedRolesLabel }, locale)}
+                        </div>
+                        <div className="muted small">{formatDiscipleRoleEffect(disciple.role, disciple.aptitude)}</div>
+                      </div>
+                      <div className="contract-actions">
+                        <label className="muted small" style={{ display: "block" }}>
+                          {t("disciples.assignRole", undefined, locale)}
+                          <select
+                            value={disciple.role ?? ""}
+                            onChange={(event) => {
+                              const role = event.target.value as DiscipleRole | "";
+                              handleAssignDiscipleRole(disciple.id, role === "" ? null : (role as DiscipleRole));
+                            }}
+                            style={{ marginLeft: "4px" }}
+                          >
+                            <option value="">{t("disciples.role.none", undefined, locale)}</option>
+                            {archetype.rolesAllowed.map((role) => (
+                              <option key={role} value={role}>
+                                {discipleRoleLabels[role]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
       {activeTab === "ascend" ? (
         <section className="card">
           <div className="card-header">
@@ -1036,6 +1775,131 @@ function App() {
               },
               locale
             )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h2>{t("settings.title", undefined, locale)}</h2>
+              <p className="muted small">{t("settings.description", undefined, locale)}</p>
+            </div>
+          </div>
+          <div className="help-section">
+            <h3>{t("settings.automationTitle", undefined, locale)}</h3>
+            <div className="contract-list">
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoClaim.label", undefined, locale)}</strong>
+                    <span
+                      className={`status-pill ${
+                        gameState.automation.autoClaimContracts ? "status-active" : "status-idle"
+                      }`}
+                    >
+                      {gameState.automation.autoClaimContracts
+                        ? t("settings.status.available", undefined, locale)
+                        : t("settings.status.locked", undefined, locale)}
+                    </span>
+                  </div>
+                  <p className="muted small">{t("settings.autoClaim.description", undefined, locale)}</p>
+                  {!gameState.automation.autoClaimContracts ? (
+                    <div className="muted small warning">{t("settings.requiresClerk", undefined, locale)}</div>
+                  ) : null}
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoClaimContracts}
+                      onChange={(event) => handleUpdateSettings({ autoClaimContracts: event.target.checked })}
+                      disabled={!gameState.automation.autoClaimContracts}
+                    />{" "}
+                    {t("settings.autoClaim.toggle", undefined, locale)}
+                  </label>
+                </div>
+              </div>
+
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoAccept.label", undefined, locale)}</strong>
+                    <span
+                      className={`status-pill ${
+                        gameState.automation.autoAcceptContracts ? "status-active" : "status-idle"
+                      }`}
+                    >
+                      {gameState.automation.autoAcceptContracts
+                        ? t("settings.status.available", undefined, locale)
+                        : t("settings.status.locked", undefined, locale)}
+                    </span>
+                  </div>
+                  <p className="muted small">{t("settings.autoAccept.description", undefined, locale)}</p>
+                  {!gameState.automation.autoAcceptContracts ? (
+                    <div className="muted small warning">{t("settings.requiresClerk", undefined, locale)}</div>
+                  ) : null}
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small" style={{ display: "block" }}>
+                    {t("settings.autoAccept.modeLabel", undefined, locale)}
+                    <select
+                      style={{ marginLeft: "4px" }}
+                      value={settings.autoAcceptMode}
+                      onChange={(event) =>
+                        handleUpdateSettings({
+                          autoAcceptMode: event.target.value as GameState["settings"]["autoAcceptMode"]
+                        })
+                      }
+                      disabled={!gameState.automation.autoAcceptContracts}
+                    >
+                      {(["recommended", "highestScore", "manual"] as const).map((mode) => (
+                        <option key={mode} value={mode}>
+                          {autoAcceptModeLabels[mode]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoForging.label", undefined, locale)}</strong>
+                    <span className="status-pill status-active">{t("settings.status.available", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">{t("settings.autoForging.description", undefined, locale)}</p>
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoForging}
+                      onChange={(event) => handleUpdateSettings({ autoForging: event.target.checked })}
+                    />{" "}
+                    {t("settings.autoForging.toggle", undefined, locale)}
+                  </label>
+                </div>
+              </div>
+
+              <div className="contract-row">
+                <div className="contract-info">
+                  <div className="contract-title">
+                    <strong>{t("settings.autoAlchemy.label", undefined, locale)}</strong>
+                    <span className="status-pill status-idle">{t("settings.status.preview", undefined, locale)}</span>
+                  </div>
+                  <p className="muted small">{t("settings.autoAlchemy.description", undefined, locale)}</p>
+                </div>
+                <div className="contract-actions">
+                  <label className="muted small">
+                    <input type="checkbox" checked={settings.autoAlchemy} disabled />{" "}
+                    {t("settings.autoAlchemy.toggle", undefined, locale)}
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       ) : null}

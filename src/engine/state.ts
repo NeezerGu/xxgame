@@ -1,11 +1,14 @@
 import { findUpgrade } from "./data/upgrades";
 import { INSIGHT_PROD_BONUS_PER_POINT, BASE_CONTRACT_SLOTS } from "./data/constants";
 import type { GameState } from "./types";
-import { initializeUpgradesRecord } from "./utils";
+import { initializeUpgradesRecord } from "./utils.js";
 import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
 import { getResearchModifiers } from "./research";
 import { buildRealmState, getInitialRealmId } from "./progressionRealm";
 import { addResources, createEmptyResources, getResource } from "./resources";
+import { getEquipmentModifiers } from "./equipment";
+import { syncAutomation } from "./disciples";
+import { createInitialExpeditionState } from "./expeditions";
 
 export const BASE_PRODUCTION = 1;
 
@@ -27,8 +30,9 @@ export function calculateProduction(state: GameState): GameState {
   }, 1);
 
   const researchModifiers = getResearchModifiers(state);
+  const equipmentModifiers = getEquipmentModifiers(state);
   const insightMultiplier = 1 + getResource(state.resources, "insight") * INSIGHT_PROD_BONUS_PER_POINT;
-  const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier;
+  const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier * equipmentModifiers.productionMult;
 
   const basePerSecond = BASE_PRODUCTION;
   const perSecond = (basePerSecond + additiveBonus) * multiplier;
@@ -45,6 +49,7 @@ export function calculateProduction(state: GameState): GameState {
 }
 
 export function resetState(state: GameState): GameState {
+  const realm = resetStateRealm();
   const reset: GameState = {
     ...state,
     resources: addResources(createEmptyResources(), {
@@ -54,13 +59,14 @@ export function resetState(state: GameState): GameState {
       essenceEarned: 0,
       contractsCompleted: 0
     },
-    realm: resetStateRealm(),
     research: state.research,
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: null,
-    contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots))
+    realm,
+    contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots)),
+    expeditions: createInitialExpeditionState(realm.current)
   };
-  return calculateProduction(reset);
+  return calculateProduction(syncAutomation(reset));
 }
 
 export function resetStateRealm(): GameState["realm"] {

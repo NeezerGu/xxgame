@@ -6,6 +6,17 @@ import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
 import { breakthrough } from "./progressionRealm";
 import { addResources, getResource } from "./resources";
+import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
+import { disassembleItem, progressForging, startForging } from "./forging";
+import {
+  applyDiscipleGathering,
+  assignDiscipleRole,
+  getDiscipleModifiers,
+  recruitDisciple,
+  runDiscipleAutomation
+} from "./disciples";
+import { progressExpedition, startExpedition } from "./expeditions";
+import { mergeSettings } from "./settings";
 
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
@@ -15,22 +26,36 @@ export function tick(state: GameState, dtMs: number): GameState {
     return state;
   }
 
-  const perSecond = state.production.perSecond;
+  const discipleModifiers = getDiscipleModifiers(state);
+  const settings = mergeSettings(state.settings, {});
+  const progressed = progressForging(state, dtMs, discipleModifiers.forgingSpeedMult);
+  const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
+
+  const perSecond = withGathering.production.perSecond;
   const deltaSeconds = dtMs / 1000;
   const deltaEssence = perSecond * deltaSeconds;
-  const nextResources = addResources(state.resources, { essence: deltaEssence });
-  const researchModifiers = getResearchModifiers(state);
+  const nextResources = addResources(withGathering.resources, { essence: deltaEssence });
+  const researchModifiers = getResearchModifiers(withGathering);
+  const equipmentModifiers = getEquipmentModifiers(withGathering);
 
   const withResources: GameState = {
-    ...state,
+    ...withGathering,
     resources: nextResources,
     runStats: {
-      ...state.runStats,
-      essenceEarned: state.runStats.essenceEarned + deltaEssence
+      ...withGathering.runStats,
+      essenceEarned: withGathering.runStats.essenceEarned + deltaEssence
     }
   };
 
-  return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult);
+  const progressedContracts = progressContracts(
+    withResources,
+    dtMs,
+    researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult
+  );
+
+  const progressedExpedition = progressExpedition(progressedContracts, dtMs);
+
+  return runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
 }
 
 export function applyAction(state: GameState, action: Action): GameState {
@@ -85,6 +110,43 @@ export function applyAction(state: GameState, action: Action): GameState {
     case "buyResearch": {
       const updated = applyResearchPurchase(state, action.researchId);
       return calculateProduction(updated);
+    }
+    case "startForge": {
+      const updated = startForging(state, action.blueprintId);
+      return updated;
+    }
+    case "disassemble": {
+      return disassembleItem(state, action.instanceId);
+    }
+    case "equip": {
+      const updated = equipItem(state, action.instanceId);
+      if (updated === state) {
+        return state;
+      }
+      return calculateProduction(updated);
+    }
+    case "unequip": {
+      const updated = unequipSlot(state, action.slot);
+      if (updated === state) {
+        return state;
+      }
+      return calculateProduction(updated);
+    }
+    case "recruitDisciple": {
+      return recruitDisciple(state);
+    }
+    case "assignDiscipleRole": {
+      return assignDiscipleRole(state, action.discipleId, action.role);
+    }
+    case "startExpedition": {
+      return startExpedition(state, action.expeditionId, action.discipleId ?? null);
+    }
+    case "updateSettings": {
+      const settings = mergeSettings(state.settings, action.settings);
+      return {
+        ...state,
+        settings
+      };
     }
     default: {
       return state;

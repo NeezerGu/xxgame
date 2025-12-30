@@ -1,8 +1,13 @@
 import { findUpgrade } from "./data/upgrades";
 import { INSIGHT_PROD_BONUS_PER_POINT, BASE_CONTRACT_SLOTS } from "./data/constants";
-import { initializeUpgradesRecord } from "./utils";
+import { initializeUpgradesRecord } from "./utils.js";
 import { createInitialContractsState, refreshContractFromDefinition } from "./contracts";
 import { getResearchModifiers } from "./research";
+import { buildRealmState, getInitialRealmId } from "./progressionRealm";
+import { addResources, createEmptyResources, getResource } from "./resources";
+import { getEquipmentModifiers } from "./equipment";
+import { syncAutomation } from "./disciples";
+import { createInitialExpeditionState } from "./expeditions";
 export const BASE_PRODUCTION = 1;
 export function calculateProduction(state) {
     const additiveBonus = Object.entries(state.upgrades).reduce((total, [id, level]) => {
@@ -20,8 +25,9 @@ export function calculateProduction(state) {
         return total;
     }, 1);
     const researchModifiers = getResearchModifiers(state);
-    const insightMultiplier = 1 + state.resources.insight * INSIGHT_PROD_BONUS_PER_POINT;
-    const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier;
+    const equipmentModifiers = getEquipmentModifiers(state);
+    const insightMultiplier = 1 + getResource(state.resources, "insight") * INSIGHT_PROD_BONUS_PER_POINT;
+    const multiplier = upgradeMultiplier * researchModifiers.productionMult * insightMultiplier * equipmentModifiers.productionMult;
     const basePerSecond = BASE_PRODUCTION;
     const perSecond = (basePerSecond + additiveBonus) * multiplier;
     return {
@@ -35,14 +41,12 @@ export function calculateProduction(state) {
     };
 }
 export function resetState(state) {
+    const realm = resetStateRealm();
     const reset = {
         ...state,
-        resources: {
-            essence: 0,
-            insight: state.resources.insight,
-            research: 0,
-            reputation: 0
-        },
+        resources: addResources(createEmptyResources(), {
+            insight: getResource(state.resources, "insight")
+        }),
         runStats: {
             essenceEarned: 0,
             contractsCompleted: 0
@@ -50,9 +54,14 @@ export function resetState(state) {
         research: state.research,
         upgrades: initializeUpgradesRecord(),
         lastFocusAtMs: null,
-        contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots))
+        realm,
+        contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots)),
+        expeditions: createInitialExpeditionState(realm.current)
     };
-    return calculateProduction(reset);
+    return calculateProduction(syncAutomation(reset));
+}
+export function resetStateRealm() {
+    return buildRealmState(getInitialRealmId());
 }
 export function syncContractDefinitions(state) {
     const updatedSlots = state.contracts.slots.map((slot) => refreshContractFromDefinition(slot));

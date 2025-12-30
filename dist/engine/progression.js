@@ -1,8 +1,9 @@
 import { resetState } from "./state";
 import { INSIGHT_GAIN_A, INSIGHT_GAIN_B, INSIGHT_GAIN_C } from "./data/constants";
+import { getResource } from "./resources";
 export const ASCEND_THRESHOLD = 1000;
 export function canAscend(state, threshold = ASCEND_THRESHOLD) {
-    return state.resources.essence >= threshold;
+    return getResource(state.resources, "essence") >= threshold;
 }
 export function calculateInsightGain(state, threshold = ASCEND_THRESHOLD) {
     const { essenceEarned, contractsCompleted } = state.runStats;
@@ -27,7 +28,7 @@ export function ascend(state, threshold = ASCEND_THRESHOLD) {
         ...reset,
         resources: {
             ...reset.resources,
-            insight: state.resources.insight + gain
+            insight: getResource(reset.resources, "insight") + gain
         }
     };
 }

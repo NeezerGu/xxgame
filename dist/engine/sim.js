@@ -3,29 +3,40 @@ import { ascend } from "./progression";
 import { calculateProduction } from "./state";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { applyResearchPurchase, getResearchModifiers } from "./research";
+import { breakthrough } from "./progressionRealm";
+import { addResources, getResource } from "./resources";
+import { equipItem, getEquipmentModifiers, unequipSlot } from "./equipment";
+import { disassembleItem, progressForging, startForging } from "./forging";
+import { applyDiscipleGathering, assignDiscipleRole, getDiscipleModifiers, recruitDisciple, runDiscipleAutomation } from "./disciples";
+import { progressExpedition, startExpedition } from "./expeditions";
+import { mergeSettings } from "./settings";
 export const FOCUS_GAIN = 5;
 export const FOCUS_COOLDOWN_MS = 3000;
 export function tick(state, dtMs) {
     if (dtMs <= 0) {
         return state;
     }
-    const perSecond = state.production.perSecond;
+    const discipleModifiers = getDiscipleModifiers(state);
+    const settings = mergeSettings(state.settings, {});
+    const progressed = progressForging(state, dtMs, discipleModifiers.forgingSpeedMult);
+    const withGathering = applyDiscipleGathering(progressed, dtMs, discipleModifiers);
+    const perSecond = withGathering.production.perSecond;
     const deltaSeconds = dtMs / 1000;
     const deltaEssence = perSecond * deltaSeconds;
-    const nextEssence = state.resources.essence + deltaEssence;
-    const researchModifiers = getResearchModifiers(state);
+    const nextResources = addResources(withGathering.resources, { essence: deltaEssence });
+    const researchModifiers = getResearchModifiers(withGathering);
+    const equipmentModifiers = getEquipmentModifiers(withGathering);
     const withResources = {
-        ...state,
-        resources: {
-            ...state.resources,
-            essence: nextEssence
-        },
+        ...withGathering,
+        resources: nextResources,
         runStats: {
-            ...state.runStats,
-            essenceEarned: state.runStats.essenceEarned + deltaEssence
+            ...withGathering.runStats,
+            essenceEarned: withGathering.runStats.essenceEarned + deltaEssence
         }
     };
-    return progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult);
+    const progressedContracts = progressContracts(withResources, dtMs, researchModifiers.contractSpeedMult * equipmentModifiers.contractSpeedMult);
+    const progressedExpedition = progressExpedition(progressedContracts, dtMs);
+    return runDiscipleAutomation(progressedExpedition, discipleModifiers, settings);
 }
 export function applyAction(state, action) {
     switch (action.type) {
@@ -35,10 +46,7 @@ export function applyAction(state, action) {
             }
             return {
                 ...state,
-                resources: {
-                    ...state.resources,
-                    essence: state.resources.essence + FOCUS_GAIN
-                },
+                resources: addResources(state.resources, { essence: FOCUS_GAIN }),
                 runStats: {
                     ...state.runStats,
                     essenceEarned: state.runStats.essenceEarned + FOCUS_GAIN
@@ -50,7 +58,7 @@ export function applyAction(state, action) {
             const upgradeDef = findUpgrade(action.upgradeId);
             const currentLevel = state.upgrades[upgradeDef.id] ?? 0;
             const cost = getUpgradeCost(upgradeDef, currentLevel);
-            if (state.resources.essence < cost) {
+            if (getResource(state.resources, "essence") < cost) {
                 return state;
             }
             const newUpgrades = {
@@ -59,16 +67,16 @@ export function applyAction(state, action) {
             };
             const updated = {
                 ...state,
-                resources: {
-                    ...state.resources,
-                    essence: state.resources.essence - cost
-                },
+                resources: addResources(state.resources, { essence: -cost }),
                 upgrades: newUpgrades
             };
             return calculateProduction(updated);
         }
         case "ascend": {
             return calculateProduction(ascend(state));
+        }
+        case "breakthrough": {
+            return calculateProduction(breakthrough(state));
         }
         case "acceptContract": {
             return acceptContract(state, action.contractId);
@@ -79,6 +87,43 @@ export function applyAction(state, action) {
         case "buyResearch": {
             const updated = applyResearchPurchase(state, action.researchId);
             return calculateProduction(updated);
+        }
+        case "startForge": {
+            const updated = startForging(state, action.blueprintId);
+            return updated;
+        }
+        case "disassemble": {
+            return disassembleItem(state, action.instanceId);
+        }
+        case "equip": {
+            const updated = equipItem(state, action.instanceId);
+            if (updated === state) {
+                return state;
+            }
+            return calculateProduction(updated);
+        }
+        case "unequip": {
+            const updated = unequipSlot(state, action.slot);
+            if (updated === state) {
+                return state;
+            }
+            return calculateProduction(updated);
+        }
+        case "recruitDisciple": {
+            return recruitDisciple(state);
+        }
+        case "assignDiscipleRole": {
+            return assignDiscipleRole(state, action.discipleId, action.role);
+        }
+        case "startExpedition": {
+            return startExpedition(state, action.expeditionId, action.discipleId ?? null);
+        }
+        case "updateSettings": {
+            const settings = mergeSettings(state.settings, action.settings);
+            return {
+                ...state,
+                settings
+            };
         }
         default: {
             return state;

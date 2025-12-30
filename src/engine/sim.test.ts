@@ -7,6 +7,9 @@ import { calculateProduction } from "./state";
 import { calculateInsightGain, ASCEND_THRESHOLD } from "./progression";
 import { findUpgrade, getUpgradeCost } from "./data/upgrades";
 import { getInitialRealmId } from "./progressionRealm";
+import { DISCIPLE_RECRUIT_COST } from "./data/disciples";
+import { EXPEDITION_DEFINITIONS } from "./data/expeditions";
+import type { GameState } from "./types";
 
 const APPROX_EPSILON = 1e-9;
 
@@ -92,6 +95,120 @@ describe("run stats tracking", () => {
 
     expect(claimed.runStats.contractsCompleted).toBe(1);
     expect(claimed.runStats.essenceEarned).toBeCloseTo(progressed.runStats.essenceEarned + 15);
+  });
+});
+
+describe("disciples", () => {
+  it("recruits disciples in order using resources", () => {
+    const base = createInitialState(0);
+    const funded = {
+      ...base,
+      resources: { ...base.resources, essence: base.resources.essence + 500, reputation: 50 }
+    };
+    const first = applyAction(funded, { type: "recruitDisciple" });
+    expect(first.resources.essence).toBeCloseTo(funded.resources.essence - DISCIPLE_RECRUIT_COST.essence);
+    expect(first.resources.reputation).toBeCloseTo(funded.resources.reputation - DISCIPLE_RECRUIT_COST.reputation);
+    expect(first.disciples.roster).toHaveLength(1);
+
+    const second = applyAction(first, { type: "recruitDisciple" });
+    expect(second.disciples.roster).toHaveLength(2);
+    expect(second.disciples.roster[0].archetypeId).not.toBe(second.disciples.roster[1].archetypeId);
+  });
+
+  it("applies gatherer income and contract clerk automation during tick", () => {
+    const base = createInitialState(0);
+    const clerk: GameState["disciples"]["roster"][number] = {
+      id: "d1",
+      archetypeId: "ledger-adept",
+      aptitude: 1,
+      role: "contractClerk"
+    };
+    const gatherer: GameState["disciples"]["roster"][number] = {
+      id: "d2",
+      archetypeId: "grove-runner",
+      aptitude: 1,
+      role: "gatherer"
+    };
+    const slotIndex = base.contracts.slots.findIndex((slot) => slot.id === "starter-recon");
+    const slots = base.contracts.slots.slice();
+    slots[slotIndex] = { ...slots[slotIndex], status: "completed" as const };
+    const prepared: GameState = {
+      ...base,
+      resources: { ...base.resources, essence: 50, reputation: 20, herb: 0, ore: 0 },
+      production: { ...base.production, perSecond: 2, basePerSecond: 2 },
+      disciples: { ...base.disciples, roster: [clerk, gatherer] },
+      automation: { autoAcceptContracts: true, autoClaimContracts: true },
+      contracts: { ...base.contracts, slots }
+    };
+
+    const progressed = tick(prepared, 1000);
+
+    expect(progressed.resources.herb).toBeGreaterThan(prepared.resources.herb);
+    expect(progressed.resources.ore).toBeGreaterThan(prepared.resources.ore);
+    expect(progressed.runStats.contractsCompleted).toBe(prepared.runStats.contractsCompleted + 1);
+    expect(progressed.contracts.slots.some((slot) => slot.status === "active")).toBe(true);
+  });
+
+  it("respects settings when automation is disabled", () => {
+    const base = createInitialState(0);
+    const slotIndex = base.contracts.slots.findIndex((slot) => slot.id === "starter-recon");
+    const slots = base.contracts.slots.slice();
+    slots[slotIndex] = { ...slots[slotIndex], status: "completed", elapsedMs: slots[slotIndex].durationMs };
+    const withDisciple: GameState = {
+      ...base,
+      contracts: { ...base.contracts, slots },
+      disciples: {
+        ...base.disciples,
+        roster: [
+          {
+            id: "d1",
+            archetypeId: "ledger-adept",
+            aptitude: 1,
+            role: "contractClerk"
+          }
+        ]
+      }
+    };
+    const disabled = applyAction(withDisciple, {
+      type: "updateSettings",
+      settings: { autoClaimContracts: false, autoAcceptMode: "manual" }
+    });
+
+    const progressed = tick(disabled, 1000);
+
+    expect(progressed.contracts.slots[slotIndex].status).toBe("completed");
+  });
+
+  it("auto-starts forging when enabled in settings", () => {
+    const base = createInitialState(0);
+    const funded: GameState = {
+      ...base,
+      resources: {
+        ...base.resources,
+        essence: 100,
+        ore: 50
+      }
+    };
+
+    const progressed = tick(funded, 100);
+
+    expect(progressed.forgingQueue.active).not.toBeNull();
+    expect(progressed.forgingQueue.active?.blueprintId).toBe("ember-shiv");
+  });
+});
+
+describe("expeditions", () => {
+  it("starts and completes an expedition with rewards and logs", () => {
+    const base = createInitialState(0);
+    const expeditionId = EXPEDITION_DEFINITIONS[0].id;
+    const started = applyAction(base, { type: "startExpedition", expeditionId });
+    expect(started.expeditions.active?.expeditionId).toBe(expeditionId);
+    const duration = EXPEDITION_DEFINITIONS[0].durationMs;
+    const progressed = tick(started, duration + 1000);
+    expect(progressed.expeditions.active).toBeNull();
+    expect(progressed.expeditions.lastResult?.expeditionId).toBe(expeditionId);
+    expect(progressed.expeditions.lastResult?.rewards.length).toBeGreaterThan(0);
+    expect(progressed.expeditions.lastResult?.log.length).toBeGreaterThan(0);
   });
 });
 
@@ -362,6 +479,25 @@ describe("save migration", () => {
     expect(migrated.state.realm.unlockedTabs.length).toBeGreaterThan(0);
   });
 
+  it("fills equipment data when migrating schema v6 saves", () => {
+    const legacy = {
+      schemaVersion: 6,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 6
+      }
+    };
+    // @ts-expect-error simulate legacy save without equipment fields
+    delete legacy.state.equipmentInventory;
+    // @ts-expect-error simulate legacy save without equipped state
+    delete legacy.state.equipped;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(Object.values(migrated.state.equipmentInventory.items)).not.toHaveLength(0);
+    expect(migrated.state.equipped.weapon === null || typeof migrated.state.equipped.weapon === "string").toBe(true);
+  });
+
   it("fills new resource keys when migrating schema v5 saves", () => {
     const legacy = {
       schemaVersion: 5,
@@ -382,5 +518,22 @@ describe("save migration", () => {
     expect(migrated.state.resources.herb).toBe(0);
     expect(migrated.state.resources.ore).toBe(0);
     expect(migrated.state.resources.essence).toBe(20);
+  });
+
+  it("hydrates forging queue when migrating legacy saves", () => {
+    const legacy = {
+      schemaVersion: 7,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 7
+      }
+    };
+    // @ts-expect-error simulate legacy save without forgingQueue
+    delete legacy.state.forgingQueue;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(migrated.state.forgingQueue.active).toBeNull();
+    expect(migrated.state.forgingQueue.lastFinished).toBeNull();
   });
 });

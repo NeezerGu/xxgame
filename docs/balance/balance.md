@@ -27,6 +27,74 @@
 | herb-gathering | 35 | 25 | 0 | 8 | 3 | 15 | 0 | 1.5 | 15 |
 | ore-survey | 42 | 35 | 0 | 12 | 4 | 0 | 10 | 2 | 25 |
 
+## 历练/秘境
+| ID | Duration(s) | Rolls | Stamina | Required Realm | Name Key | Desc Key |
+| --- | --- | --- | --- | --- | --- | --- |
+| sunken-archive | 45 | 2 | - | - | expeditions.sunkenArchive.name | expeditions.sunkenArchive.description |
+| shimmering-reef | 55 | 2 | - | ember-handler | expeditions.shimmeringReef.name | expeditions.shimmeringReef.description |
+| ember-crater | 60 | 3 | - | artisan-adept | expeditions.emberCrater.name | expeditions.emberCrater.description |
+| mist-labyrinth | 70 | 3 | - | array-keeper | expeditions.mistLabyrinth.name | expeditions.mistLabyrinth.description |
+| skyforge-span | 80 | 3 | - | forgemaster | expeditions.skyforgeSpan.name | expeditions.skyforgeSpan.description |
+| hollow-spire | 95 | 4 | - | domain-seeker | expeditions.hollowSpire.name | expeditions.hollowSpire.description |
+
+## 弟子原型
+| ID | Base Aptitude | Allowed Roles | Name Key | Description Key |
+| --- | --- | --- | --- | --- |
+| ledger-adept | 0.18 | contractClerk, gatherer | disciples.archetype.ledgerAdept.name | disciples.archetype.ledgerAdept.description |
+| furnace-attune | 0.2 | smith, alchemist | disciples.archetype.furnaceAttune.name | disciples.archetype.furnaceAttune.description |
+| grove-runner | 0.16 | gatherer, contractClerk | disciples.archetype.groveRunner.name | disciples.archetype.groveRunner.description |
+| array-scribe | 0.14 | contractClerk, alchemist | disciples.archetype.arrayScribe.name | disciples.archetype.arrayScribe.description |
+
+## 弟子岗位效果
+| Role | Auto Claim | Auto Accept | Forge Speed/apt | Alchemy Speed/apt | Herb/s/apt | Ore/s/apt |
+| --- | --- | --- | --- | --- | --- | --- |
+| contractClerk | yes | yes | 0 | 0 | 0 | 0 |
+| alchemist | - | - | 0 | 0.15 | 0 | 0 |
+| smith | - | - | 0.15 | 0 | 0 | 0 |
+| gatherer | - | - | 0 | 0 | 0.05 | 0.04 |
+
+## 装备蓝图
+| ID | Slot | Base Power | Forge Time(ms) | Cost Essence | Cost Ore | Name Key | Description Key |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ember-shiv | weapon | 0.05 | 20000 | 30 | 12 | equipment.blueprint.emberShiv.name | equipment.blueprint.emberShiv.description |
+| woven-ward | armor | 0.04 | 25000 | 35 | 14 | equipment.blueprint.wovenWard.name | equipment.blueprint.wovenWard.description |
+| circuit-band | ring | 0.03 | 15000 | 25 | 10 | equipment.blueprint.circuitBand.name | equipment.blueprint.circuitBand.description |
+| glyph-charm | amulet | 0.025 | 18000 | 28 | 11 | equipment.blueprint.glyphCharm.name | equipment.blueprint.glyphCharm.description |
+
+## 装备词缀
+| ID | Name Key | Type | Min | Max |
+| --- | --- | --- | --- | --- |
+| steady-flow | equipment.affix.steadyFlow.name | productionMult | 0.04 | 0.08 |
+| swift-handling | equipment.affix.swiftHandling.name | contractSpeedMult | 0.08 | 0.12 |
+| deep-reserve | equipment.affix.deepReserve.name | offlineCapBonus | 1200000 | 2400000 |
+| focused-channels | equipment.affix.focusedChannels.name | productionMult | 0.06 | 0.1 |
+| rapid-binding | equipment.affix.rapidBinding.name | contractSpeedMult | 0.05 | 0.1 |
+| anchored-focus | equipment.affix.anchoredFocus.name | offlineCapBonus | 600000 | 1500000 |
+
+## 稀有度权重
+| Rarity | Weight |
+| --- | --- |
+| common | 0.7 |
+| uncommon | 0.2 |
+| rare | 0.09 |
+| epic | 0.01 |
+
+## 词缀条目数
+| Rarity | Affix Count |
+| --- | --- |
+| common | 1 |
+| uncommon | 2 |
+| rare | 3 |
+| epic | 4 |
+
+## 分解返还倍率（基于蓝图 Ore 成本）
+| Rarity | Refund Multiplier |
+| --- | --- |
+| common | 0.35 |
+| uncommon | 0.5 |
+| rare | 0.8 |
+| epic | 1 |
+
 ## 关键常量
 | Key | Value |
 | --- | --- |
