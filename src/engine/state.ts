@@ -10,6 +10,7 @@ import { getEquipmentModifiers } from "./equipment";
 import { syncAutomation } from "./disciples";
 import { createInitialExpeditionState } from "./expeditions";
 import { getBuffModifiers } from "./alchemy";
+import { getFacilityModifiers } from "./facilities";
 
 export const BASE_PRODUCTION = 1;
 
@@ -53,6 +54,8 @@ export function calculateProduction(state: GameState): GameState {
 
 export function resetState(state: GameState): GameState {
   const realm = resetStateRealm();
+  const facilityModifiers = getFacilityModifiers(state);
+  const researchModifiers = getResearchModifiers(state);
   const reset: GameState = {
     ...state,
     resources: addResources(createEmptyResources(), {
@@ -66,7 +69,9 @@ export function resetState(state: GameState): GameState {
     upgrades: initializeUpgradesRecord(),
     lastFocusAtMs: null,
     realm,
-    contracts: createInitialContractsState(Math.max(BASE_CONTRACT_SLOTS + getResearchModifiers(state).contractSlotsBonus, state.contracts.maxSlots)),
+    contracts: createInitialContractsState(
+      Math.max(BASE_CONTRACT_SLOTS + researchModifiers.contractSlotsBonus + facilityModifiers.contractSlotsBonus, state.contracts.maxSlots)
+    ),
     expeditions: createInitialExpeditionState(realm.current)
   };
   return calculateProduction(syncAutomation(reset));

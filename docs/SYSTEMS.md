@@ -16,6 +16,7 @@
 - `alchemyQueue`: { `active`: null | { recipeId, remainingMs, totalMs }, `lastFinished`: { itemId, quantity } | null } — 炼金队列，单任务模式，完成后向 `consumables` 库存写入。
 - `consumables`: Record<ConsumableId, number> — 炼金药剂/消耗品库存（确定性生成，来源于炼金）。
 - `buffs`: Array<{ id: ConsumableId, remainingMs: number, effects: { productionMult?, contractSpeedMult? } }> — 已服用药剂的持续增益，随 tick 衰减。
+- `facilities`: Record<FacilityId, { level: number }> — 工坊设施等级表，驱动委托槽位、声望获取、炼金/锻造速度与离线上限等长期加成。
 - `disciples`: { `roster`: Array<{ id, archetypeId, aptitude, role }>, `nextId`: number, `nextArchetypeIndex`: number } — 学徒 roster，原型与岗位确定性生成，可分配岗位带来自动化或被动收益。
 - `automation`: { `autoClaimContracts`: boolean, `autoAcceptContracts`: boolean } — 自动化开关，由学徒岗位决定。
 - `settings`: { `autoClaimContracts`: boolean, `autoAcceptMode`: "recommended" | "highestScore" | "manual", `autoAlchemy`: boolean, `autoForging`: boolean } — 玩家侧的自动化偏好开关，仍需对应岗位或系统解锁后才生效。
@@ -36,6 +37,7 @@
 - `ACCEPT_CONTRACT(id)` — 将待选委托放入空槽位并开始计时。
 - `COMPLETE_CONTRACT(slotId)` — 结算完成的委托并发放奖励。
 - `BUY_RESEARCH(id)` — 购买研究节点。
+- `UPGRADE_FACILITY(id)` — 消耗精华升级设施，更新委托槽位、炼金/锻造/声望等派生。
 - `EQUIP(instanceId)` — 将背包中的装备实例穿戴到对应槽位（同槽位会替换旧装备引用）。
 - `UNEQUIP(slot)` — 卸下槽位上的装备。
 - `START_FORGE(blueprintId)` — 队列空闲且材料足够时开始锻造，立即消耗成本并规划稀有度与词缀。
@@ -126,4 +128,5 @@
 - RNG：`nextRandom(seed)` 纯函数更新种子；稀有度按权重抽取（common/uncommon/rare/epic），词缀数量随稀有度变化，词缀数值在定义的 min/max 范围线性插值。相同 seed + 相同动作序列产物完全一致。
 - 升华预览：基于当前/累计指标计算，下行取整以防止浮点误差。
 - 离线模拟：`effectiveOffline = min(now - timestamp, offlineCapMs)`；按固定 tick 封顶迭代调用 TICK，避免一次性大步长偏差。
-- 离线上限：`offlineCapMs = baseOfflineCapMs + equipmentOfflineBonus`（当前基础为 8h，可由装备词缀增加）。
+- 离线上限：`offlineCapMs = baseOfflineCapMs + equipmentOfflineBonus + facilityOfflineBonus`（当前基础为 8h，可由装备/设施加成增加）。
+- 设施派生：Guild Hall 提供委托槽位、声望倍率与接单折扣；Lab/Forges 提升炼金与锻造速度、延长药剂；Archive 增加离线上限与效率。所有派生均在接单/结算、队列推进与离线结算时应用，取整后写入状态。

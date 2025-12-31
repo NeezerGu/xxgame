@@ -536,4 +536,21 @@ describe("save migration", () => {
     expect(migrated.state.forgingQueue.active).toBeNull();
     expect(migrated.state.forgingQueue.lastFinished).toBeNull();
   });
+
+  it("hydrates facilities when migrating legacy saves", () => {
+    const legacy = {
+      schemaVersion: 12,
+      savedAtMs: 0,
+      state: {
+        ...createInitialState(0),
+        schemaVersion: 12
+      }
+    };
+    // @ts-expect-error simulate legacy save without facilities
+    delete legacy.state.facilities;
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    expect(Object.values(migrated.state.facilities)).not.toHaveLength(0);
+    expect(Object.values(migrated.state.facilities).every((entry) => entry.level === 0)).toBe(true);
+  });
 });

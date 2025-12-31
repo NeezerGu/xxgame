@@ -12,6 +12,7 @@ import {
 } from "./data/equipment";
 import { calculateProduction } from "./state";
 import type { EquipmentAffixInstance, EquipmentInstance, EquipmentRarity } from "./types";
+import { getFacilityModifiers } from "./facilities";
 
 interface ExpeditionEventOutcome {
   logKey: string;
@@ -162,6 +163,7 @@ function resolveExpedition(state: GameState, active: NonNullable<GameState["expe
   const rewards: ExpeditionReward[] = [];
   let nextSeed = seed;
   let nextState = state;
+  const facilityModifiers = getFacilityModifiers(state);
 
   const rolls = Math.max(1, active.rewardRollsRemaining);
   for (let i = 0; i < rolls; i += 1) {
@@ -169,13 +171,19 @@ function resolveExpedition(state: GameState, active: NonNullable<GameState["expe
     nextSeed = rewardRoll.nextSeed;
     let reward = rewardRoll.reward;
     if (reward.type === "resource") {
+      const scaledAmount =
+        reward.resourceId === "reputation"
+          ? Math.floor(reward.amount * facilityModifiers.reputationGainMult)
+          : reward.amount;
+      const adjustedReward: ExpeditionReward = { ...reward, amount: scaledAmount };
       nextState = {
         ...nextState,
-        resources: addResources(nextState.resources, { [reward.resourceId]: reward.amount } as Record<
+        resources: addResources(nextState.resources, { [reward.resourceId]: scaledAmount } as Record<
           typeof reward.resourceId,
           number
         >)
       };
+      reward = adjustedReward;
     } else if (reward.type === "recipe") {
       if (!nextState.realm.unlockedRecipeIds.includes(reward.recipeId)) {
         nextState = {

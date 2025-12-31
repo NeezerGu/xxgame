@@ -3,6 +3,7 @@ import type { EquipmentAffixInstance, EquipmentInstance, ForgingQueueState, Game
 import { nextRandom } from "./utils/rng";
 import { canAfford, addResources, spendResources } from "./resources";
 import { calculateProduction } from "./state";
+import { getFacilityModifiers } from "./facilities";
 
 export function createEmptyForgingQueue(): ForgingQueueState {
   return {
@@ -135,7 +136,8 @@ export function disassembleItem(state: GameState, instanceId: string): GameState
   if (!target) return state;
   const blueprint = findEquipmentBlueprint(target.blueprintId);
   const refundMultiplier = DISASSEMBLE_REFUND_MULTIPLIER[target.rarity] ?? 0;
-  const refundOre = Math.round(blueprint.cost.ore * refundMultiplier);
+  const facilityModifiers = getFacilityModifiers(state);
+  const refundOre = Math.floor(blueprint.cost.ore * refundMultiplier * facilityModifiers.disassembleYieldMult);
   const nextItems = { ...inventory.items };
   delete nextItems[instanceId];
 

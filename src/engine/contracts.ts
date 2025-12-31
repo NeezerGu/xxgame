@@ -2,6 +2,7 @@ import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { CONTRACT_DEFINITIONS, findContractDefinition, type ContractId } from "./data/contracts";
 import type { ContractsState, ContractSlot, GameState } from "./types";
 import { addResources, getResource, spendResources } from "./resources";
+import { getFacilityModifiers } from "./facilities";
 
 const DEFAULT_CONTRACT_SLOTS = BASE_CONTRACT_SLOTS;
 
@@ -40,9 +41,12 @@ export function acceptContract(state: GameState, contractId: ContractId): GameSt
     elapsedMs: 0
   };
 
+  const facilityModifiers = getFacilityModifiers(state);
+  const cost = getDiscountedAcceptCost(def.acceptCostEssence ?? 0, facilityModifiers.contractCostDiscount);
+
   return {
     ...state,
-    resources: spendResources(state.resources, { essence: def.acceptCostEssence ?? 0 }),
+    resources: spendResources(state.resources, { essence: cost }),
     contracts: replaceSlot(state.contracts, slotIndex, updatedSlot)
   };
 }
@@ -57,7 +61,8 @@ export function canAcceptContract(state: GameState, contractId: ContractId): boo
   const def = findContractDefinition(contractId);
   const requiredReputation = def.requiredReputation ?? 0;
   const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
-  const acceptCostEssence = def.acceptCostEssence ?? 0;
+  const facilityModifiers = getFacilityModifiers(state);
+  const acceptCostEssence = getDiscountedAcceptCost(def.acceptCostEssence ?? 0, facilityModifiers.contractCostDiscount);
 
   if (!state.realm.unlockedContractIds.includes(contractId)) {
     return false;
@@ -129,7 +134,8 @@ export function completeContract(state: GameState, contractId: ContractId): Game
     return state;
   }
 
-  const reward = slot.reward;
+  const facilityModifiers = getFacilityModifiers(state);
+  const reward = applyReputationModifier(slot.reward, facilityModifiers.reputationGainMult);
   const updatedResources = addResources(state.resources, reward);
 
   const resetSlot: ContractSlot = {
@@ -197,6 +203,19 @@ function replaceSlot(contracts: ContractsState, index: number, slot: ContractSlo
     ...contracts,
     slots: nextSlots
   };
+}
+
+function getDiscountedAcceptCost(cost: number, discount: number): number {
+  const discounted = Math.floor(cost * Math.max(0, 1 - discount));
+  return Math.max(0, discounted);
+}
+
+function applyReputationModifier(reward: ContractSlot["reward"], reputationGainMult: number): ContractSlot["reward"] {
+  if (!reward.reputation) {
+    return reward;
+  }
+  const scaledReputation = Math.floor(reward.reputation * reputationGainMult);
+  return { ...reward, reputation: scaledReputation };
 }
 
 function ensureAllDefinitionsPresent(contracts: ContractsState): ContractsState {

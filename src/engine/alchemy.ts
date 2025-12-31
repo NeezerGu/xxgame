@@ -8,6 +8,7 @@ import type {
   GameState
 } from "./types";
 import { canAfford, spendResources } from "./resources";
+import { getFacilityModifiers } from "./facilities";
 
 export function createEmptyAlchemyQueue(): AlchemyQueueState {
   return {
@@ -143,9 +144,12 @@ export function consumeItem(state: GameState, itemId: ConsumableId): GameState {
   const count = inventory[itemId] ?? 0;
   if (count <= 0) return state;
 
+  const facilityModifiers = getFacilityModifiers(state);
+  const durationMs = Math.round(def.durationMs * facilityModifiers.buffDurationMult);
+
   const nextBuffs: ActiveBuff[] = [
     ...(state.buffs ?? []),
-    { id: itemId, remainingMs: def.durationMs, effects: def.effects }
+    { id: itemId, remainingMs: durationMs, effects: def.effects }
   ];
 
   return {
