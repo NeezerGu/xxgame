@@ -134,6 +134,8 @@ export async function runSim(userConfig = {}) {
   const { EXPEDITION_DEFINITIONS } = await import("../dist/engine/data/expeditions.js");
   const { ALCHEMY_RECIPES, CONSUMABLE_DEFINITIONS } = await import("../dist/engine/data/alchemy.js");
   const { isRecipeUnlocked } = await import("../dist/engine/alchemy.js");
+  const { FACILITY_DEFINITIONS } = await import("../dist/engine/data/facilities.js");
+  const { canUpgradeFacility } = await import("../dist/engine/facilities.js");
 
   let state = createInitialState(config.seed);
   const totals = {
@@ -210,6 +212,22 @@ export async function runSim(userConfig = {}) {
         totals.upgradesPurchased += 1;
         state = next;
       }
+    }
+  }
+
+  function upgradeFacilities() {
+    const priority = ["guildHall", "forge", "lab", "archive"];
+    for (const id of priority) {
+      const def = FACILITY_DEFINITIONS.find((item) => item.id === id);
+      if (!def) continue;
+      const currentLevel = state.facilities?.[id]?.level ?? 0;
+      if (currentLevel >= def.maxLevel) continue;
+      if (!canUpgradeFacility(state, id)) continue;
+      const next = applyAction(state, { type: "upgradeFacility", facilityId: id });
+      if (next !== state) {
+        state = next;
+      }
+      break;
     }
   }
 
@@ -420,6 +438,7 @@ export async function runSim(userConfig = {}) {
     buyResearchIfPossible();
     attemptBreakthrough();
     tryAscend();
+    upgradeFacilities();
     buyUpgrades();
     fillContracts();
     startForgingIfPossible();
