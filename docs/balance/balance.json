@@ -72,6 +72,238 @@
       }
     }
   ],
+  "facilities": [
+    {
+      "id": "guildHall",
+      "nameKey": "facilities.guildHall.name",
+      "descriptionKey": "facilities.guildHall.description",
+      "baseCostEssence": 120,
+      "costGrowth": 1.6,
+      "maxLevel": 4,
+      "effectsByLevel": [
+        {
+          "contractSlotsBonus": 1,
+          "reputationGainMult": 1.1,
+          "contractCostDiscount": 0.05
+        },
+        {
+          "reputationGainMult": 1.05,
+          "contractCostDiscount": 0.05
+        },
+        {
+          "contractSlotsBonus": 1,
+          "reputationGainMult": 1.05,
+          "contractCostDiscount": 0.05
+        },
+        {
+          "reputationGainMult": 1.05,
+          "contractCostDiscount": 0.05
+        }
+      ],
+      "totalsByLevel": [
+        {
+          "contractSlotsBonus": 1,
+          "reputationGainMult": 1.1,
+          "contractCostDiscount": 0.05,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 1,
+          "reputationGainMult": 1.1550000000000002,
+          "contractCostDiscount": 0.1,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 2,
+          "reputationGainMult": 1.2127500000000002,
+          "contractCostDiscount": 0.15000000000000002,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 2,
+          "reputationGainMult": 1.2733875000000003,
+          "contractCostDiscount": 0.2,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        }
+      ]
+    },
+    {
+      "id": "lab",
+      "nameKey": "facilities.lab.name",
+      "descriptionKey": "facilities.lab.description",
+      "baseCostEssence": 90,
+      "costGrowth": 1.55,
+      "maxLevel": 3,
+      "effectsByLevel": [
+        {
+          "alchemySpeedMult": 1.12,
+          "buffDurationMult": 1.05
+        },
+        {
+          "alchemySpeedMult": 1.12,
+          "buffDurationMult": 1.05
+        },
+        {
+          "alchemySpeedMult": 1.15,
+          "buffDurationMult": 1.1
+        }
+      ],
+      "totalsByLevel": [
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1.12,
+          "buffDurationMult": 1.05,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1.2544000000000002,
+          "buffDurationMult": 1.1025,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1.44256,
+          "buffDurationMult": 1.2127500000000002,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        }
+      ]
+    },
+    {
+      "id": "forge",
+      "nameKey": "facilities.forge.name",
+      "descriptionKey": "facilities.forge.description",
+      "baseCostEssence": 110,
+      "costGrowth": 1.6,
+      "maxLevel": 3,
+      "effectsByLevel": [
+        {
+          "forgingSpeedMult": 1.12,
+          "disassembleYieldMult": 1.05
+        },
+        {
+          "forgingSpeedMult": 1.12,
+          "disassembleYieldMult": 1.05
+        },
+        {
+          "forgingSpeedMult": 1.15,
+          "disassembleYieldMult": 1.08
+        }
+      ],
+      "totalsByLevel": [
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1.12,
+          "disassembleYieldMult": 1.05,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1.2544000000000002,
+          "disassembleYieldMult": 1.1025,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        },
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1.44256,
+          "disassembleYieldMult": 1.1907,
+          "offlineCapBonusMs": 0,
+          "offlineEfficiencyMult": 1
+        }
+      ]
+    },
+    {
+      "id": "archive",
+      "nameKey": "facilities.archive.name",
+      "descriptionKey": "facilities.archive.description",
+      "baseCostEssence": 150,
+      "costGrowth": 1.5,
+      "maxLevel": 2,
+      "effectsByLevel": [
+        {
+          "offlineCapBonusMs": 1800000,
+          "offlineEfficiencyMult": 1.05
+        },
+        {
+          "offlineCapBonusMs": 1800000,
+          "offlineEfficiencyMult": 1.05
+        }
+      ],
+      "totalsByLevel": [
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 1800000,
+          "offlineEfficiencyMult": 1.05
+        },
+        {
+          "contractSlotsBonus": 0,
+          "reputationGainMult": 1,
+          "contractCostDiscount": 0,
+          "alchemySpeedMult": 1,
+          "buffDurationMult": 1,
+          "forgingSpeedMult": 1,
+          "disassembleYieldMult": 1,
+          "offlineCapBonusMs": 3600000,
+          "offlineEfficiencyMult": 1.1025
+        }
+      ]
+    }
+  ],
   "contracts": [
     {
       "id": "starter-recon",

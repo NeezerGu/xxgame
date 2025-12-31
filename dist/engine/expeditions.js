@@ -4,6 +4,7 @@ import { nextRandom } from "./utils/rng";
 import { addResources } from "./resources";
 import { AFFIX_DEFINITIONS, FORGING_AFFIX_COUNT, FORGING_RARITY_WEIGHTS, findEquipmentBlueprint } from "./data/equipment";
 import { calculateProduction } from "./state";
+import { getFacilityModifiers } from "./facilities";
 const EVENT_INTERVAL_MS = 10000;
 export function createInitialExpeditionState(currentRealm) {
     return {
@@ -133,16 +134,22 @@ function resolveExpedition(state, active, seed) {
     const rewards = [];
     let nextSeed = seed;
     let nextState = state;
+    const facilityModifiers = getFacilityModifiers(state);
     const rolls = Math.max(1, active.rewardRollsRemaining);
     for (let i = 0; i < rolls; i += 1) {
         const rewardRoll = pickReward(def.rewardTable, nextSeed);
         nextSeed = rewardRoll.nextSeed;
         let reward = rewardRoll.reward;
         if (reward.type === "resource") {
+            const scaledAmount = reward.resourceId === "reputation"
+                ? Math.floor(reward.amount * facilityModifiers.reputationGainMult)
+                : reward.amount;
+            const adjustedReward = { ...reward, amount: scaledAmount };
             nextState = {
                 ...nextState,
-                resources: addResources(nextState.resources, { [reward.resourceId]: reward.amount })
+                resources: addResources(nextState.resources, { [reward.resourceId]: scaledAmount })
             };
+            reward = adjustedReward;
         }
         else if (reward.type === "recipe") {
             if (!nextState.realm.unlockedRecipeIds.includes(reward.recipeId)) {

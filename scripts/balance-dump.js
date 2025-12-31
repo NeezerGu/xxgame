@@ -43,6 +43,47 @@ function renderTable(headers, rows) {
   return `${headerLine}\n${separator}\n${body}\n`;
 }
 
+function formatNumber(value) {
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function formatPercent(value) {
+  return `${formatNumber(value * 100)}%`;
+}
+
+function formatFacilityTotals(totals) {
+  const parts = [];
+  if (totals.contractSlotsBonus) {
+    parts.push(`slots +${formatNumber(totals.contractSlotsBonus)}`);
+  }
+  if (totals.reputationGainMult !== 1) {
+    parts.push(`reputation x${formatNumber(totals.reputationGainMult)}`);
+  }
+  if (totals.contractCostDiscount) {
+    parts.push(`contract cost -${formatPercent(totals.contractCostDiscount)}`);
+  }
+  if (totals.alchemySpeedMult !== 1) {
+    parts.push(`alchemy x${formatNumber(totals.alchemySpeedMult)}`);
+  }
+  if (totals.buffDurationMult !== 1) {
+    parts.push(`buff duration x${formatNumber(totals.buffDurationMult)}`);
+  }
+  if (totals.forgingSpeedMult !== 1) {
+    parts.push(`forging x${formatNumber(totals.forgingSpeedMult)}`);
+  }
+  if (totals.disassembleYieldMult !== 1) {
+    parts.push(`disassemble x${formatNumber(totals.disassembleYieldMult)}`);
+  }
+  if (totals.offlineCapBonusMs) {
+    parts.push(`offline cap +${formatNumber(totals.offlineCapBonusMs / 60000)}m`);
+  }
+  if (totals.offlineEfficiencyMult !== 1) {
+    parts.push(`offline eff x${formatNumber(totals.offlineEfficiencyMult)}`);
+  }
+  return parts.length > 0 ? parts.join(", ") : "-";
+}
+
 async function main() {
   runBuild();
 
@@ -69,6 +110,19 @@ async function main() {
   const { ASCEND_THRESHOLD } = await loadModule("progression.js");
   const { FOCUS_GAIN, FOCUS_COOLDOWN_MS } = await loadModule("sim.js");
   const { RESOURCE_IDS } = await loadModule("resources.js");
+  const { FACILITY_DEFINITIONS } = await loadModule("data/facilities.js");
+  const { getFacilityEffectTotals } = await loadModule("facilities.js");
+
+  const facilityTotals = FACILITY_DEFINITIONS.map((def) => ({
+    id: def.id,
+    nameKey: def.nameKey,
+    descriptionKey: def.descriptionKey,
+    baseCostEssence: def.baseCostEssence,
+    costGrowth: def.costGrowth,
+    maxLevel: def.maxLevel,
+    effectsByLevel: def.effectsByLevel,
+    totalsByLevel: def.effectsByLevel.map((_, index) => getFacilityEffectTotals(def, index + 1))
+  }));
 
   const balanceJson = {
     constants: {
@@ -84,6 +138,7 @@ async function main() {
     },
     upgrades: UPGRADE_DEFINITIONS,
     research: RESEARCH_DEFINITIONS,
+    facilities: facilityTotals,
     contracts: CONTRACT_DEFINITIONS,
     equipmentBlueprints: EQUIPMENT_BLUEPRINTS,
     equipmentAffixes: AFFIX_DEFINITIONS,
@@ -118,6 +173,13 @@ async function main() {
     formatResearchEffect(r.effect),
     (r.prerequisites ?? []).join(", ") || "-"
   ]);
+  const facilityRows = FACILITY_DEFINITIONS.map((f) => {
+    const levelSummaries = f.effectsByLevel.map((_, index) => {
+      const totals = getFacilityEffectTotals(f, index + 1);
+      return `Lv${index + 1}: ${formatFacilityTotals(totals)}`;
+    });
+    return [f.id, f.baseCostEssence, f.costGrowth, f.maxLevel, levelSummaries.join("<br>")];
+  });
   const equipmentBlueprintRows = EQUIPMENT_BLUEPRINTS.map((b) => [
     b.id,
     b.slot,
@@ -185,6 +247,8 @@ async function main() {
     ),
     "## 研究",
     renderTable(["ID", "Cost Research", "Effect Type", "Effect", "Prerequisites"], researchRows),
+    "## 设施",
+    renderTable(["ID", "Base Cost", "Cost Growth", "Max Level", "Effects by Level"], facilityRows),
     "## 契约",
     renderTable(
       ["ID", "Duration(s)", ...RESOURCE_IDS.map((id) => `Reward ${id}`), "Req EPS", "Req Reputation"],

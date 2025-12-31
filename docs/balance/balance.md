@@ -13,7 +13,15 @@
 | productionBoost | 10 | productionMultiplier | prod x1.1 | contractSpeed |
 | extraContractSlot | 12 | contractSlot | +1 slot(s) | productionBoost |
 
-## 委托
+## 设施
+| ID | Base Cost | Cost Growth | Max Level | Effects by Level |
+| --- | --- | --- | --- | --- |
+| guildHall | 120 | 1.6 | 4 | Lv1: slots +1, reputation x1.1, contract cost -5%<br>Lv2: slots +1, reputation x1.16, contract cost -10%<br>Lv3: slots +2, reputation x1.21, contract cost -15%<br>Lv4: slots +2, reputation x1.27, contract cost -20% |
+| lab | 90 | 1.55 | 3 | Lv1: alchemy x1.12, buff duration x1.05<br>Lv2: alchemy x1.25, buff duration x1.1<br>Lv3: alchemy x1.44, buff duration x1.21 |
+| forge | 110 | 1.6 | 3 | Lv1: forging x1.12, disassemble x1.05<br>Lv2: forging x1.25, disassemble x1.1<br>Lv3: forging x1.44, disassemble x1.19 |
+| archive | 150 | 1.5 | 2 | Lv1: offline cap +30m, offline eff x1.05<br>Lv2: offline cap +60m, offline eff x1.1 |
+
+## 契约
 | ID | Duration(s) | Reward essence | Reward insight | Reward research | Reward reputation | Reward herb | Reward ore | Req EPS | Req Reputation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | starter-recon | 10 | 15 | 0 | 2 | 1 | 0 | 0 | 0 | 0 |
@@ -37,7 +45,7 @@
 | skyforge-span | 80 | 3 | - | forgemaster | expeditions.skyforgeSpan.name | expeditions.skyforgeSpan.description |
 | hollow-spire | 95 | 4 | - | domain-seeker | expeditions.hollowSpire.name | expeditions.hollowSpire.description |
 
-## 学徒原型
+## 弟子原型
 | ID | Base Aptitude | Allowed Roles | Name Key | Description Key |
 | --- | --- | --- | --- | --- |
 | ledger-adept | 0.18 | contractClerk, gatherer | disciples.archetype.ledgerAdept.name | disciples.archetype.ledgerAdept.description |
@@ -45,7 +53,7 @@
 | grove-runner | 0.16 | gatherer, contractClerk | disciples.archetype.groveRunner.name | disciples.archetype.groveRunner.description |
 | array-scribe | 0.14 | contractClerk, alchemist | disciples.archetype.arrayScribe.name | disciples.archetype.arrayScribe.description |
 
-## 学徒岗位效果
+## 弟子岗位效果
 | Role | Auto Claim | Auto Accept | Forge Speed/apt | Alchemy Speed/apt | Herb/s/apt | Ore/s/apt |
 | --- | --- | --- | --- | --- | --- | --- |
 | contractClerk | yes | yes | 0 | 0 | 0 | 0 |

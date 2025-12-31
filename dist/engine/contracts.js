@@ -1,6 +1,7 @@
 import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { CONTRACT_DEFINITIONS, findContractDefinition } from "./data/contracts";
 import { addResources, getResource, spendResources } from "./resources";
+import { getFacilityModifiers } from "./facilities";
 const DEFAULT_CONTRACT_SLOTS = BASE_CONTRACT_SLOTS;
 export function createInitialContractsState(maxSlots = DEFAULT_CONTRACT_SLOTS) {
     const slots = CONTRACT_DEFINITIONS.map((def) => ({
@@ -32,9 +33,11 @@ export function acceptContract(state, contractId) {
         status: "active",
         elapsedMs: 0
     };
+    const facilityModifiers = getFacilityModifiers(state);
+    const cost = getDiscountedAcceptCost(def.acceptCostEssence ?? 0, facilityModifiers.contractCostDiscount);
     return {
         ...state,
-        resources: spendResources(state.resources, { essence: def.acceptCostEssence ?? 0 }),
+        resources: spendResources(state.resources, { essence: cost }),
         contracts: replaceSlot(state.contracts, slotIndex, updatedSlot)
     };
 }
@@ -48,7 +51,8 @@ export function canAcceptContract(state, contractId) {
     const def = findContractDefinition(contractId);
     const requiredReputation = def.requiredReputation ?? 0;
     const requiredEssencePerSecond = def.requiredEssencePerSecond ?? 0;
-    const acceptCostEssence = def.acceptCostEssence ?? 0;
+    const facilityModifiers = getFacilityModifiers(state);
+    const acceptCostEssence = getDiscountedAcceptCost(def.acceptCostEssence ?? 0, facilityModifiers.contractCostDiscount);
     if (!state.realm.unlockedContractIds.includes(contractId)) {
         return false;
     }
@@ -110,7 +114,8 @@ export function completeContract(state, contractId) {
     if (slot.status !== "completed") {
         return state;
     }
-    const reward = slot.reward;
+    const facilityModifiers = getFacilityModifiers(state);
+    const reward = applyReputationModifier(slot.reward, facilityModifiers.reputationGainMult);
     const updatedResources = addResources(state.resources, reward);
     const resetSlot = {
         ...slot,
@@ -172,6 +177,17 @@ function replaceSlot(contracts, index, slot) {
         ...contracts,
         slots: nextSlots
     };
+}
+function getDiscountedAcceptCost(cost, discount) {
+    const discounted = Math.floor(cost * Math.max(0, 1 - discount));
+    return Math.max(0, discounted);
+}
+function applyReputationModifier(reward, reputationGainMult) {
+    if (!reward.reputation) {
+        return reward;
+    }
+    const scaledReputation = Math.floor(reward.reputation * reputationGainMult);
+    return { ...reward, reputation: scaledReputation };
 }
 function ensureAllDefinitionsPresent(contracts) {
     const existingIds = new Set(contracts.slots.map((slot) => slot.id));

@@ -12,7 +12,8 @@ import { createEmptyAlchemyQueue, createEmptyConsumables } from "./alchemy";
 import { createInitialAutomationState, createInitialDisciplesState, syncAutomation } from "./disciples";
 import { createInitialExpeditionState, refreshExpeditionUnlocks } from "./expeditions";
 import { createDefaultSettings, mergeSettings } from "./settings";
-export const SCHEMA_VERSION = 12;
+import { applyFacilityDefaults, createInitialFacilitiesState, getFacilityModifiers } from "./facilities";
+export const SCHEMA_VERSION = 13;
 function normalizeResources(resources) {
     return createEmptyResources(resources ?? {});
 }
@@ -61,7 +62,8 @@ export function createInitialState(nowMs) {
         forgingQueue: createEmptyForgingQueue(),
         alchemyQueue: createEmptyAlchemyQueue(),
         consumables: createEmptyConsumables(),
-        buffs: []
+        buffs: [],
+        facilities: createInitialFacilitiesState()
     };
     return calculateProduction(base);
 }
@@ -129,6 +131,17 @@ export function migrateToLatest(save) {
         };
     }
     if (save.schemaVersion === 10) {
+        const migratedState = {
+            ...save.state,
+            schemaVersion: SCHEMA_VERSION
+        };
+        return {
+            schemaVersion: SCHEMA_VERSION,
+            savedAtMs: save.savedAtMs ?? Date.now(),
+            state: applyStateDefaults(migratedState)
+        };
+    }
+    if (save.schemaVersion === 11 || save.schemaVersion === 12) {
         const migratedState = {
             ...save.state,
             schemaVersion: SCHEMA_VERSION
@@ -240,6 +253,7 @@ function applyStateDefaults(state) {
     const alchemyQueue = withStarterEquipment.alchemyQueue ?? createEmptyAlchemyQueue();
     const consumables = createEmptyConsumables(withStarterEquipment.consumables);
     const buffs = withStarterEquipment.buffs ?? [];
+    const facilities = applyFacilityDefaults(withStarterEquipment.facilities);
     const withResources = {
         ...withStarterEquipment,
         schemaVersion: SCHEMA_VERSION,
@@ -274,9 +288,12 @@ function applyStateDefaults(state) {
         forgingQueue,
         alchemyQueue,
         consumables,
-        buffs
+        buffs,
+        facilities
     };
-    const desiredSlots = BASE_CONTRACT_SLOTS + getResearchModifiers({ ...withResources, research }).contractSlotsBonus;
+    const desiredSlots = BASE_CONTRACT_SLOTS +
+        getResearchModifiers({ ...withResources, research }).contractSlotsBonus +
+        getFacilityModifiers({ ...withResources, facilities }).contractSlotsBonus;
     const withContracts = ensureContractSlotCount(withResources, Math.max(desiredSlots, withResources.contracts.maxSlots));
     const withExpeditions = refreshExpeditionUnlocks({ ...withContracts, expeditions }, withContracts.realm.current);
     return calculateProduction(syncAutomation(withExpeditions));
