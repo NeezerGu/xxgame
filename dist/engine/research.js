@@ -2,6 +2,7 @@ import { BASE_CONTRACT_SLOTS } from "./data/constants";
 import { ensureContractSlotCount } from "./contracts";
 import { findResearchDefinition, RESEARCH_DEFINITIONS } from "./data/research";
 import { getResource } from "./resources";
+import { getFacilityModifiers } from "./facilities";
 export function initializeResearchState() {
     const nodes = RESEARCH_DEFINITIONS.reduce((acc, def) => {
         acc[def.id] = { purchased: false };
@@ -52,8 +53,9 @@ export function applyResearchPurchase(state, id) {
             research: getResource(state.resources, "research") - def.costResearch
         }
     };
-    const modifiers = getResearchModifiers(updatedState);
-    const desiredSlots = BASE_CONTRACT_SLOTS + modifiers.contractSlotsBonus;
+    const researchModifiers = getResearchModifiers(updatedState);
+    const facilityModifiers = getFacilityModifiers(updatedState);
+    const desiredSlots = BASE_CONTRACT_SLOTS + researchModifiers.contractSlotsBonus + facilityModifiers.contractSlotsBonus;
     return ensureContractSlotCount(updatedState, desiredSlots);
 }
 export function getResearchModifiers(state) {

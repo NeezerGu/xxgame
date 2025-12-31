@@ -148,7 +148,9 @@ export async function runSim(userConfig = {}) {
     researchPurchasedCount: 0,
     disciplesRecruited: 0,
     alchemyBrewed: 0,
-    consumablesUsed: 0
+    consumablesUsed: 0,
+    facilitiesUpgraded: 0,
+    facilitiesLevels: {}
   };
 
   let elapsedMs = 0;
@@ -215,6 +217,13 @@ export async function runSim(userConfig = {}) {
     }
   }
 
+  function getFacilityLevelsSnapshot(currentState) {
+    return FACILITY_DEFINITIONS.reduce((acc, def) => {
+      acc[def.id] = currentState.facilities?.[def.id]?.level ?? 0;
+      return acc;
+    }, {});
+  }
+
   function upgradeFacilities() {
     const priority = ["guildHall", "forge", "lab", "archive"];
     for (const id of priority) {
@@ -225,6 +234,7 @@ export async function runSim(userConfig = {}) {
       if (!canUpgradeFacility(state, id)) continue;
       const next = applyAction(state, { type: "upgradeFacility", facilityId: id });
       if (next !== state) {
+        totals.facilitiesUpgraded += 1;
         state = next;
       }
       break;
@@ -437,9 +447,9 @@ export async function runSim(userConfig = {}) {
     recruitDisciplesIfPossible();
     buyResearchIfPossible();
     attemptBreakthrough();
-    tryAscend();
-    upgradeFacilities();
     buyUpgrades();
+    upgradeFacilities();
+    tryAscend();
     fillContracts();
     startForgingIfPossible();
     startExpeditionIfIdle();
@@ -478,6 +488,8 @@ export async function runSim(userConfig = {}) {
     .filter(([, node]) => node.purchased)
     .map(([id]) => id);
 
+  totals.facilitiesLevels = getFacilityLevelsSnapshot(state);
+
   const summary = {
     config: {
       seconds: config.seconds,
@@ -496,7 +508,9 @@ export async function runSim(userConfig = {}) {
       researchPurchasedCount: totals.researchPurchasedCount,
       disciplesRecruited: totals.disciplesRecruited,
       alchemyBrewed: totals.alchemyBrewed,
-      consumablesUsed: totals.consumablesUsed
+      consumablesUsed: totals.consumablesUsed,
+      facilitiesUpgraded: totals.facilitiesUpgraded,
+      facilitiesLevels: totals.facilitiesLevels
     },
     final: {
       resources: state.resources,

@@ -2,6 +2,8 @@
 
 本目录存放 headless 模拟输出，用于平衡与回归验证。
 
+默认策略会在每轮决策时按 guildHall > forge > lab > archive 的优先级尝试升级 1 次设施（在可升级且资源足够时）。
+
 ## 如何运行
 
 在仓库根目录执行：
@@ -47,7 +49,7 @@ npm run sim:check -- --full # 同时检查 60 分钟基线
 脚本会写入文件并在 stdout 打印完整 JSON，结构包含：
 
 - `summary.config`: 运行参数。
-- `summary.totals`: 跨周目累计指标（升华次数、洞察获取、接单/完成计数、购买次数）。
+- `summary.totals`: 跨周目累计指标（升华次数、洞察获取、接单/完成计数、购买次数、设施升级次数与最终等级快照）。
 - `summary.final`: 结束时的资源、每秒产出与当局 runStats。
 - `summary.purchasedResearch` / `summary.upgradesLevels`: 已购研究与升级等级。
 - `summary.timeline`: 按 `timelineEverySec` 采样的时间序列（秒、精华、EPS、洞察、声望、科研点、活跃契约数、累计完成量）。
